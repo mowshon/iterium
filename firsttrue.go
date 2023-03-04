@@ -1,0 +1,26 @@
+package iternium
+
+// FirstTrue returns the iterator with the first value from
+// the provided iterator that returned `true` after the function was applied.
+func FirstTrue[T any](iterable Iter[T], apply func(T) bool) Iter[T] {
+	iter := Instance[T](0, false)
+
+	go func() {
+		defer iterRecover()
+		defer iter.Close()
+
+		for true {
+			next, err := iterable.Next()
+			if err != nil {
+				return
+			}
+
+			if apply(next) {
+				iter.Chan() <- next
+				return
+			}
+		}
+	}()
+
+	return iter
+}
