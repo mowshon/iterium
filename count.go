@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // Count returns an iterator in which each successive value
 // will be added to the value from step.

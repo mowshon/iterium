@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // iterator is the initial iterator structure.
 type iterator[T any] struct {

@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // StarMap takes a iterator with slices of two values and applies
 // a binary function to them, returning a new iterator with the result of that function.

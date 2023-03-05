@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // Accumulate returns an iterator that sends the accumulated
 // result from the binary function to the channel.

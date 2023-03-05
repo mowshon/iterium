@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 import (
 	"math"

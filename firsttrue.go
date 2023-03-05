@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // FirstTrue returns the iterator with the first value from
 // the provided iterator that returned `true` after the function was applied.

@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // Repeat returns a channel from which a value can be retrieved n-number of times.
 func Repeat[T any](value T, n int) Iter[T] {

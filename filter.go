@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // Filter creates a new iterator and writes to the channel only
 // those values that returned `true` after executing the predicate function.

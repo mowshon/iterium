@@ -1,4 +1,4 @@
-module github.com/mowshon/iternium
+module github.com/mowshon/iterium
 
 go 1.19
 

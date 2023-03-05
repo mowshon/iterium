@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 import (
 	"github.com/stretchr/testify/assert"

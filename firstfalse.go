@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // FirstFalse returns the iterator with the first value from
 // the provided iterator that returned `false` after the function was applied.

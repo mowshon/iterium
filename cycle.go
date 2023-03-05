@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // Cycle returns an infinite iterator that writes data from
 // the provided iterator to the infinite iterator.

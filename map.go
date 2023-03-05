@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 func Map[T, W any](iterable Iter[T], apply func(T) W) Iter[W] {
 	iter := Instance[W](iterable.Count(), iterable.IsInfinite())

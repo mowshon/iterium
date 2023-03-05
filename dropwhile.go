@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // DropWhile returns all other values from the provided iterator
 // after receiving the first `false` from the provided function.

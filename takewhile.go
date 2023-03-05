@@ -1,4 +1,4 @@
-package iternium
+package iterium
 
 // TakeWhile returns only the first values from the provided iterator that
 // returned `true` after sending them to the provided function.
