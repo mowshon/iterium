@@ -12,3 +12,17 @@ func TestRepeat(t *testing.T) {
 		assert.Exactly(t, []string{"A", "A", "A"}, slice)
 	}
 }
+
+func TestRepeatInfinite(t *testing.T) {
+	repeat := Repeat("A", -1)
+	assert.Exactly(t, true, repeat.IsInfinite())
+
+	var data []string
+	for i := 0; i <= 3; i++ {
+		if next, err := repeat.Next(); assert.Nil(t, err) {
+			data = append(data, next)
+		}
+	}
+
+	assert.Exactly(t, []string{"A", "A", "A", "A"}, data)
+}
