@@ -2,14 +2,14 @@ package iterium
 
 // Accumulate returns an iterator that sends the accumulated
 // result from the binary function to the channel.
-func Accumulate[N Number](iterable Iter[N], operator func(N, N) N) Iter[N] {
-	iter := Instance[N](iterable.Count(), iterable.IsInfinite())
+func Accumulate[T any](iterable Iter[T], operator func(T, T) T) Iter[T] {
+	iter := Instance[T](iterable.Count(), iterable.IsInfinite())
 
 	go func() {
 		defer iterRecover()
 		defer iter.Close()
 
-		var last N
+		var last T
 		var start bool
 		for true {
 			next, err := iterable.Next()
