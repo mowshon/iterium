@@ -1,4 +1,4 @@
-<h1 id="iterium">🚀 Iterium - Generic Channel-based Iterators for Golang</h1>
+<h1 id="iterium">🚀 Iterium - Generic Channel-based Iterators</h1>
 
 The **Iterium** package is a powerful toolkit for creating and manipulating generic iterators in Golang. Inspired by the popular Python **itertools** library, Iterium provides a variety of functions for working with iterators in different ways.
 
