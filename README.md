@@ -685,6 +685,7 @@ func CustomStuttering[T any](iterable iterium.Iter[T]) iterium.Iter[T] {
 
     go func() {
         defer iter.Close()
+        defer iterium.IterRecover()
 
         for {
             // Here will be the logic of your iterator...
@@ -717,5 +718,6 @@ func main() {
 Output:
 
 ```
-[1, 1, 1, 2, 2, 2, 3, 3, 3]
+[1 1 1 2 2 2 3 3 3]
+Total: 9
 ```
