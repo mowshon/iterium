@@ -34,8 +34,8 @@ type Iter[T any] interface {
 	Count() int64
 }
 
-// iterRecover intercepts the resulting error from the goroutine.
-func iterRecover() {
+// IterRecover intercepts the resulting error from the goroutine.
+func IterRecover() {
 	recover()
 }
 

@@ -12,7 +12,7 @@ func Repeat[T any](value T, n int) Iter[T] {
 	}
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		if iter.IsInfinite() {

@@ -8,7 +8,7 @@ func DropWhile[T any](iterable Iter[T], pred func(T) bool) Iter[T] {
 	iter := Instance[T](0, false)
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		// Wait until the value from the channel returns false.

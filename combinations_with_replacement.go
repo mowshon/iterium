@@ -21,7 +21,7 @@ func CombinationsWithReplacement[T any](symbols []T, k int) Iter[[]T] {
 	iter := Instance[[]T](total, false)
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		comb := make([]int, k)

@@ -4,7 +4,7 @@ func Map[T, W any](iterable Iter[T], apply func(T) W) Iter[W] {
 	iter := Instance[W](iterable.Count(), iterable.IsInfinite())
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		for true {

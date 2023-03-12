@@ -38,7 +38,7 @@ func Permutations[T any](symbols []T, limit int) Iter[[]T] {
 	var backtrack func(first int)
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		backtrack = func(first int) {

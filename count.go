@@ -9,7 +9,7 @@ func Count[N Number](args ...N) Iter[N] {
 	iter := Instance[N](0, true)
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		for {

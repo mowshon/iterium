@@ -21,7 +21,7 @@ func Cycle[T any](iterable Iter[T]) Iter[T] {
 	// Run infinite loop into the goroutine and
 	// send values from the slice to the channel.
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		for {

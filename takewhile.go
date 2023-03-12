@@ -8,7 +8,7 @@ func TakeWhile[T any](iterable Iter[T], pred func(T) bool) Iter[T] {
 	iter := Instance[T](0, false)
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		for true {

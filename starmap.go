@@ -6,7 +6,7 @@ func StarMap[T any](iterable Iter[[]T], apply func(T, T) T) Iter[T] {
 	iter := Instance[T](iterable.Count(), iterable.IsInfinite())
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		for true {

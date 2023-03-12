@@ -36,7 +36,7 @@ func Combinations[T any](symbols []T, limit int) Iter[[]T] {
 	}
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		// Loop over the stack until it is empty.

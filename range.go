@@ -38,7 +38,7 @@ func Range[S Signed](args ...S) Iter[S] {
 	iter := Instance[S](total, false)
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		for i := uint(0); i < uint(total); i++ {

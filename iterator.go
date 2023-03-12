@@ -63,7 +63,7 @@ func New[T any](values ...T) Iter[T] {
 	iter := Instance[T](int64(len(values)), false)
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		for _, val := range values {

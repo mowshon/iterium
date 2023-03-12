@@ -6,7 +6,7 @@ func Filter[T any](iterable Iter[T], predicate func(T) bool) Iter[T] {
 	iter := Instance[T](iterable.Count(), iterable.IsInfinite())
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		for {

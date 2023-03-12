@@ -6,7 +6,7 @@ func Accumulate[T any](iterable Iter[T], operator func(T, T) T) Iter[T] {
 	iter := Instance[T](iterable.Count(), iterable.IsInfinite())
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		var last T

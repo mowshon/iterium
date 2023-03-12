@@ -24,7 +24,7 @@ func Product[T any](symbols []T, repeat int) Iter[[]T] {
 	}
 
 	go func() {
-		defer iterRecover()
+		defer IterRecover()
 		defer iter.Close()
 
 		// Generate all possible combinations of `repeat` elements
