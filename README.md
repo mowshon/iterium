@@ -4,6 +4,8 @@ The **Iterium** package is a powerful toolkit for creating and manipulating gene
 
 Iterium is designed to be easy to use and flexible, with a clear and concise API that enables you to create iterators that meet your specific needs. Whether you're working with strings, arrays, slices, or any other data type. **Iterium** makes it easy to traverse, filter, and manipulate your data with ease.
 
+![Iterium](https://golangify.com/wp-content/uploads/2023/03/iterium-4.png)
+
 ### Installation
 
 ```
