@@ -1,28 +1,17 @@
 package iterium
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"strings"
 	"testing"
 )
 
-func drainIter[T any](b *testing.B, iter Iter[T]) int {
-	b.Helper()
-
-	count := 0
-	for {
-		_, err := iter.Next()
-		if err != nil {
-			return count
-		}
-		count++
-	}
-}
-
-func BenchmarkRangeMapFilterLarge(b *testing.B) {
+func BenchmarkSeqRangeMapFilterLarge(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		iter := Filter(
+		count := 0
+		values := Filter(
 			Map(Range(0, 1_000_000), func(v int) int {
 				return v + 1
 			}),
@@ -31,37 +20,53 @@ func BenchmarkRangeMapFilterLarge(b *testing.B) {
 			},
 		)
 
-		if count := drainIter(b, iter); count != 500_000 {
+		for range values {
+			count++
+		}
+		if count != 500_000 {
 			b.Fatalf("unexpected count: %d", count)
 		}
 	}
 }
 
-func BenchmarkProduct26Repeat4Large(b *testing.B) {
+func BenchmarkSeqProduct26Repeat4Large(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		iter := Product(AsciiLowercase, 4)
-		if count := drainIter(b, iter); count != int(iter.Count()) {
+		count := 0
+		for range Product(AsciiLowercase, 4) {
+			count++
+		}
+		if count != int(ProductCount(len(AsciiLowercase), 4)) {
 			b.Fatalf("unexpected count: %d", count)
 		}
 	}
 }
 
-func BenchmarkProductMapFirstTrueMD5Large(b *testing.B) {
+func BenchmarkSeqProductInto26Repeat4Large(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		count := 0
+		ProductInto(AsciiLowercase, 4, func([]string) bool {
+			count++
+			return true
+		})
+		if count != int(ProductCount(len(AsciiLowercase), 4)) {
+			b.Fatalf("unexpected count: %d", count)
+		}
+	}
+}
+
+func BenchmarkSeqProductMapFirstTrueMD5Large(b *testing.B) {
 	passHash := "02c425157ecd32f259548b33402ff6d3" // md5("zzzz")
 
 	for n := 0; n < b.N; n++ {
-		product := Product(AsciiLowercase, 4)
-		joined := Map(product, func(value []string) string {
+		joined := Map(Product(AsciiLowercase, 4), func(value []string) string {
 			return strings.Join(value, "")
 		})
-		found := FirstTrue(joined, func(rawPassword string) bool {
+		result, ok := FirstTrue(joined, func(rawPassword string) bool {
 			hash := md5.Sum([]byte(rawPassword))
 			return hex.EncodeToString(hash[:]) == passHash
 		})
-
-		result, err := found.Next()
-		if err != nil {
-			b.Fatal(err)
+		if !ok {
+			b.Fatal("not found")
 		}
 		if result != "zzzz" {
 			b.Fatalf("unexpected result: %s", result)
@@ -69,30 +74,59 @@ func BenchmarkProductMapFirstTrueMD5Large(b *testing.B) {
 	}
 }
 
-func BenchmarkCombinations26Choose5Large(b *testing.B) {
+func BenchmarkSeqProductBytesIntoMD5Large(b *testing.B) {
+	passHash := md5.Sum([]byte("zzzz"))
+	alphabet := []byte("abcdefghijklmnopqrstuvwxyz")
+
 	for n := 0; n < b.N; n++ {
-		iter := Combinations(AsciiLowercase, 5)
-		if count := drainIter(b, iter); count != int(iter.Count()) {
+		var result []byte
+		ProductBytesInto(alphabet, 4, func(value []byte) bool {
+			hash := md5.Sum(value)
+			if bytes.Equal(hash[:], passHash[:]) {
+				result = append(result[:0], value...)
+				return false
+			}
+			return true
+		})
+		if string(result) != "zzzz" {
+			b.Fatalf("unexpected result: %s", result)
+		}
+	}
+}
+
+func BenchmarkSeqCombinations26Choose5Large(b *testing.B) {
+	for n := 0; n < b.N; n++ {
+		count := 0
+		for range Combinations(AsciiLowercase, 5) {
+			count++
+		}
+		if count != int(CombinationsCount(len(AsciiLowercase), 5)) {
 			b.Fatalf("unexpected count: %d", count)
 		}
 	}
 }
 
-func BenchmarkCombinationsWithReplacement26Choose5Large(b *testing.B) {
+func BenchmarkSeqCombinationsWithReplacement26Choose5Large(b *testing.B) {
 	for n := 0; n < b.N; n++ {
-		iter := CombinationsWithReplacement(AsciiLowercase, 5)
-		if count := drainIter(b, iter); count != int(iter.Count()) {
+		count := 0
+		for range CombinationsWithReplacement(AsciiLowercase, 5) {
+			count++
+		}
+		if count != int(CombinationsWithReplacementCount(len(AsciiLowercase), 5)) {
 			b.Fatalf("unexpected count: %d", count)
 		}
 	}
 }
 
-func BenchmarkPermutations10Pick5Large(b *testing.B) {
+func BenchmarkSeqPermutations10Pick5Large(b *testing.B) {
 	symbols := AsciiLowercase[:10]
 
 	for n := 0; n < b.N; n++ {
-		iter := Permutations(symbols, 5)
-		if count := drainIter(b, iter); count != int(iter.Count()) {
+		count := 0
+		for range Permutations(symbols, 5) {
+			count++
+		}
+		if count != int(PermutationCount(len(symbols), 5)) {
 			b.Fatalf("unexpected count: %d", count)
 		}
 	}

@@ -1,26 +1,14 @@
 package iterium
 
-// FirstFalse returns the iterator with the first value from
-// the provided iterator that returned `false` after the function was applied.
-func FirstFalse[T any](iterable Iter[T], apply func(T) bool) Iter[T] {
-	iter := Instance[T](0, false)
+import "iter"
 
-	go func() {
-		defer IterRecover()
-		defer iter.Close()
-
-		for true {
-			next, err := iterable.Next()
-			if err != nil {
-				return
-			}
-
-			if !apply(next) {
-				iter.Chan() <- next
-				return
-			}
+// FirstFalse returns the first value where predicate returns false.
+func FirstFalse[T any](seq iter.Seq[T], predicate func(T) bool) (T, bool) {
+	var zero T
+	for value := range seq {
+		if !predicate(value) {
+			return value, true
 		}
-	}()
-
-	return iter
+	}
+	return zero, false
 }

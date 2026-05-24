@@ -1,34 +1,24 @@
 package iterium
 
-// Accumulate returns an iterator that sends the accumulated
-// result from the binary function to the channel.
-func Accumulate[T any](iterable Iter[T], operator func(T, T) T) Iter[T] {
-	iter := Instance[T](iterable.Count(), iterable.IsInfinite())
+import "iter"
 
-	go func() {
-		defer IterRecover()
-		defer iter.Close()
-
+// Accumulate yields accumulated results from applying operator.
+func Accumulate[T any](seq iter.Seq[T], operator func(T, T) T) iter.Seq[T] {
+	return func(yield func(T) bool) {
 		var last T
-		var start bool
-		for true {
-			next, err := iterable.Next()
-			if err != nil {
+		started := false
+
+		for value := range seq {
+			if !started {
+				last = value
+				started = true
+			} else {
+				last = operator(last, value)
+			}
+
+			if !yield(last) {
 				return
 			}
-
-			if !start {
-				iter.Chan() <- next
-				last = next
-				start = true
-				continue
-			}
-
-			result := operator(last, next)
-			iter.Chan() <- result
-			last = result
 		}
-	}()
-
-	return iter
+	}
 }

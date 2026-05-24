@@ -1,27 +1,14 @@
 package iterium
 
-// FilterFalse creates a new iterator and writes to the channel only
-// those values that returned FALSE after executing the predicate function.
-func FilterFalse[T any](iterable Iter[T], predicate func(T) bool) Iter[T] {
-	iter := Instance[T](iterable.Count(), iterable.IsInfinite())
+import "iter"
 
-	go func() {
-		defer IterRecover()
-		defer iter.Close()
-
-		for {
-			next, err := iterable.Next()
-			if err != nil {
+// FilterFalse lazily filters values where predicate returns false.
+func FilterFalse[T any](seq iter.Seq[T], predicate func(T) bool) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for value := range seq {
+			if !predicate(value) && !yield(value) {
 				return
 			}
-
-			// Send a value to the channel only
-			// if the result is `false`.
-			if !predicate(next) {
-				iter.Chan() <- next
-			}
 		}
-	}()
-
-	return iter
+	}
 }

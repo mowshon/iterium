@@ -1,53 +1,36 @@
 package iterium
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestRange(t *testing.T) {
-	values := Range(5)
-	if slice, err := values.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{0, 1, 2, 3, 4}, slice)
-	}
+	assert.Exactly(t, []int{0, 1, 2, 3, 4}, Slice(Range(5)))
 }
 
 func TestRangeEmpty(t *testing.T) {
-	values := Range[int]()
-	if slice, err := values.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{}, slice)
-	}
-
-	wrongArgs := Range(50, 1)
-	if slice, err := wrongArgs.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{}, slice)
-	}
+	assert.Exactly(t, []int{}, Slice(Range[int]()))
+	assert.Exactly(t, []int{}, Slice(Range(50, 1)))
 }
 
 func TestRangeDefaultStep(t *testing.T) {
-	values := Range(0, 5)
-	if slice, err := values.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{0, 1, 2, 3, 4}, slice)
-	}
+	assert.Exactly(t, []int{0, 1, 2, 3, 4}, Slice(Range(0, 5)))
 }
 
 func TestRangeSigned(t *testing.T) {
-	values := Range(-5)
-	if slice, err := values.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{0, -1, -2, -3, -4}, slice)
-	}
+	assert.Exactly(t, []int{0, -1, -2, -3, -4}, Slice(Range(-5)))
 }
 
 func TestRangeWithStep(t *testing.T) {
-	values := Range(0, 10, 2)
-	if slice, err := values.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{0, 2, 4, 6, 8}, slice)
-	}
+	assert.Exactly(t, []int{0, 2, 4, 6, 8}, Slice(Range(0, 10, 2)))
+}
+
+func TestRangeZeroStep(t *testing.T) {
+	assert.Exactly(t, []int{}, Slice(Range(0, 10, 0)))
 }
 
 func TestRangeFloat(t *testing.T) {
-	values := Range(0.0, 10.0, 1.5)
-	if slice, err := values.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []float64{0, 1.5, 3, 4.5, 6, 7.5, 9}, slice)
-	}
+	assert.Exactly(t, []float64{0, 1.5, 3, 4.5, 6, 7.5, 9}, Slice(Range(0.0, 10.0, 1.5)))
 }

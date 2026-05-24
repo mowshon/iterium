@@ -1,35 +1,33 @@
 package iterium
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func isLess(x int) bool {
-	return x < 5
+func isLess(value int) bool {
+	return value < 5
 }
 
-func startsWithJ(x string) bool {
-	return x[0] == 'J'
+func startsWithJ(value string) bool {
+	return value[0] == 'J'
 }
 
 func TestTakeWhileInteger(t *testing.T) {
-	withIntegers := TakeWhile(Count(1, 1), isLess)
-	if slice, err := withIntegers.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{1, 2, 3, 4}, slice)
-	}
+	values := TakeWhile(Count(1, 1), isLess)
+
+	assert.Exactly(t, []int{1, 2, 3, 4}, Slice(values))
 }
 
 func TestTakeWhileString(t *testing.T) {
-	withStrings := TakeWhile(New("James", "John", "David"), startsWithJ)
-	if slice, err := withStrings.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []string{"James", "John"}, slice)
-	}
+	values := TakeWhile(New("James", "John", "David"), startsWithJ)
+
+	assert.Exactly(t, []string{"James", "John"}, Slice(values))
 }
 
 func TestTakeWhileTillTheEnd(t *testing.T) {
-	tillTheEnd := TakeWhile(New(2, 2, 2), isLess)
-	if slice, err := tillTheEnd.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{2, 2, 2}, slice)
-	}
+	values := TakeWhile(New(2, 2, 2), isLess)
+
+	assert.Exactly(t, []int{2, 2, 2}, Slice(values))
 }

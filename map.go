@@ -1,21 +1,14 @@
 package iterium
 
-func Map[T, W any](iterable Iter[T], apply func(T) W) Iter[W] {
-	iter := Instance[W](iterable.Count(), iterable.IsInfinite())
+import "iter"
 
-	go func() {
-		defer IterRecover()
-		defer iter.Close()
-
-		for true {
-			next, err := iterable.Next()
-			if err != nil {
-				break
+// Map lazily maps a sequence.
+func Map[T, W any](seq iter.Seq[T], apply func(T) W) iter.Seq[W] {
+	return func(yield func(W) bool) {
+		for value := range seq {
+			if !yield(apply(value)) {
+				return
 			}
-
-			iter.Chan() <- apply(next)
 		}
-	}()
-
-	return iter
+	}
 }

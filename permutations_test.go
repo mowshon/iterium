@@ -1,35 +1,28 @@
 package iterium
 
 import (
-	"github.com/stretchr/testify/assert"
-	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPermutations(t *testing.T) {
-	permutations := Permutations([]string{"A", "B", "C", "D"}, 2)
-	merged := Map(permutations, func(val []string) string {
-		return strings.Join(val, "")
-	})
+	values := joinStrings(Permutations([]string{"A", "B", "C", "D"}, 2))
 
-	if slice, err := merged.Slice(); assert.Nil(t, err) {
-		expected := []string{
-			"AB", "AC", "AD", "BA", "BC", "BD",
-			"CB", "CA", "CD", "DB", "DC", "DA",
-		}
+	assert.Exactly(t, []string{
+		"AB", "AC", "AD", "BA", "BC", "BD",
+		"CA", "CB", "CD", "DA", "DB", "DC",
+	}, values)
+}
 
-		assert.Exactly(t, expected, slice)
-		assert.Exactly(t, int64(12), permutations.Count())
-	}
+func TestPermutationsEdges(t *testing.T) {
+	assert.Exactly(t, [][]string{{}}, Slice(Permutations([]string{"A", "B"}, 0)))
+	assert.Exactly(t, [][]string{}, Slice(Permutations([]string{"A", "B"}, 3)))
+	assert.Exactly(t, [][]string{}, Slice(Permutations([]string{"A"}, -1)))
 }
 
 func TestPermutationCount(t *testing.T) {
 	assert.Exactly(t, int64(42), PermutationCount(7, 2))
 	assert.Exactly(t, int64(59280), PermutationCount(40, 3))
 	assert.Exactly(t, int64(78960960), PermutationCount(40, 5))
-}
-
-func TestPermutationsEmpty(t *testing.T) {
-	permutations := Permutations([]string{"A", "B"}, 10)
-	assert.Exactly(t, int64(0), permutations.Count())
 }

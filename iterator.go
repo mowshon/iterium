@@ -1,92 +1,104 @@
 package iterium
 
-// iterator is the initial iterator structure.
-type iterator[T any] struct {
-	channel  chan T
-	infinite bool
-	length   int64
-}
+import (
+	"context"
+	"iter"
+)
 
-// IsInfinite returns the iterator infinite state.
-func (i *iterator[T]) IsInfinite() bool {
-	return i.infinite
-}
-
-// SetInfinite update the infinity state of the iterator.
-func (i *iterator[T]) SetInfinite(endless bool) {
-	i.infinite = endless
-}
-
-// Chan returns the iterator channel.
-func (i *iterator[T]) Chan() chan T {
-	return i.channel
-}
-
-// Next returns the next value or error from the iterator channel.
-func (i *iterator[T]) Next() (result T, err error) {
-	if value, ok := <-i.Chan(); ok {
-		return value, nil
-	}
-
-	return result, stopIterationErr
-}
-
-// Close closes the iterator channel.
-func (i *iterator[T]) Close() {
-	close(i.channel)
-}
-
-// Count returns the number of possible values the iterator can return.
-func (i *iterator[T]) Count() int64 {
-	return i.length
-}
-
-// Slice turns the iterator into a slice of values.
-func (i *iterator[T]) Slice() ([]T, error) {
-	if i.IsInfinite() {
-		return nil, infiniteIteratorErr
-	}
-
-	result := make([]T, 0)
-	for {
-		next, err := i.Next()
-		if err != nil {
-			return result, nil
+// New returns a reusable Go iterator sequence over values.
+func New[T any](values ...T) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		for _, value := range values {
+			if !yield(value) {
+				return
+			}
 		}
-
-		result = append(result, next)
 	}
 }
 
-// New creates a new iterator with a generic data type.
-func New[T any](values ...T) Iter[T] {
-	iter := Instance[T](int64(len(values)), false)
+// Empty returns a reusable empty Go iterator sequence.
+func Empty[T any]() iter.Seq[T] {
+	return func(func(T) bool) {}
+}
 
+// Chan adapts an official Go iterator sequence to a channel.
+// Prefer ranging over the sequence directly in hot paths.
+func Chan[T any](ctx context.Context, seq iter.Seq[T]) <-chan T {
+	ch := make(chan T)
 	go func() {
-		defer IterRecover()
-		defer iter.Close()
-
-		for _, val := range values {
-			iter.Chan() <- val
+		defer close(ch)
+		for value := range seq {
+			select {
+			case <-ctx.Done():
+				return
+			case ch <- value:
+			}
 		}
 	}()
-
-	return iter
+	return ch
 }
 
-// Instance initialises and returns the basic iterator structure.
-func Instance[T any](length int64, infinite bool) Iter[T] {
-	return &iterator[T]{
-		channel:  make(chan T),
-		infinite: infinite,
-		length:   length,
+// Chan2 adapts a two-value Go iterator sequence to a channel of pairs.
+// Prefer ranging over the sequence directly in hot paths.
+func Chan2[A, B any](ctx context.Context, seq iter.Seq2[A, B]) <-chan Pair[A, B] {
+	ch := make(chan Pair[A, B])
+	go func() {
+		defer close(ch)
+		seq(func(first A, second B) bool {
+			select {
+			case <-ctx.Done():
+				return false
+			case ch <- Pair[A, B]{First: first, Second: second}:
+				return true
+			}
+		})
+	}()
+	return ch
+}
+
+// Slice collects a finite sequence into a slice.
+func Slice[T any](seq iter.Seq[T]) []T {
+	result := make([]T, 0)
+	for value := range seq {
+		result = append(result, value)
 	}
+	return result
 }
 
-// Empty creates an empty-closed iterator.
-func Empty[T any]() Iter[T] {
-	empty := Instance[T](0, false)
-	empty.Close()
+// SliceN collects up to n values from a sequence.
+func SliceN[T any](seq iter.Seq[T], n int) []T {
+	if n <= 0 {
+		return []T{}
+	}
 
-	return empty
+	result := make([]T, 0, n)
+	for value := range seq {
+		result = append(result, value)
+		if len(result) == n {
+			break
+		}
+	}
+	return result
+}
+
+// SliceUntil collects values until stop returns true for a value.
+func SliceUntil[T any](seq iter.Seq[T], stop func(T) bool) []T {
+	result := make([]T, 0)
+	for value := range seq {
+		if stop(value) {
+			break
+		}
+		result = append(result, value)
+	}
+	return result
+}
+
+// Slice2 collects a finite two-value sequence into a slice of pairs.
+func Slice2[A, B any](seq iter.Seq2[A, B]) []Pair[A, B] {
+	result := make([]Pair[A, B], 0)
+	seq(func(first A, second B) bool {
+		result = append(result, Pair[A, B]{First: first, Second: second})
+		return true
+	})
+	return result
 }

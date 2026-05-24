@@ -1,35 +1,29 @@
 package iterium
 
-// Cycle returns an infinite iterator that writes data from
-// the provided iterator to the infinite iterator.
-//
-// e.g. Cycle(New(1, 2, 3)) => 1, 2, 3, 1, 2, 3 ...
-func Cycle[T any](iterable Iter[T]) Iter[T] {
-	if iterable.IsInfinite() {
-		return iterable
-	}
+import "iter"
 
-	// Creation of a new iterator.
-	iter := Instance[T](0, true)
+// Cycle yields values from seq, lazily caching the first pass, then replays the cache forever.
+func Cycle[T any](seq iter.Seq[T]) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		saved := make([]T, 0)
 
-	// Conversion of iterator to slice
-	slice, _ := iterable.Slice()
-	if len(slice) == 0 {
-		return Empty[T]()
-	}
-
-	// Run infinite loop into the goroutine and
-	// send values from the slice to the channel.
-	go func() {
-		defer IterRecover()
-		defer iter.Close()
-
-		for {
-			for _, value := range slice {
-				iter.Chan() <- value
+		for value := range seq {
+			saved = append(saved, value)
+			if !yield(value) {
+				return
 			}
 		}
-	}()
 
-	return iter
+		if len(saved) == 0 {
+			return
+		}
+
+		for {
+			for _, value := range saved {
+				if !yield(value) {
+					return
+				}
+			}
+		}
+	}
 }

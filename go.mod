@@ -1,6 +1,6 @@
-module github.com/mowshon/iterium
+module github.com/mowshon/iterium/v2
 
-go 1.23
+go 1.23.4
 
 require (
 	github.com/stretchr/testify v1.8.2
