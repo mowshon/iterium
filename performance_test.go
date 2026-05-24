@@ -76,11 +76,10 @@ func BenchmarkSeqProductMapFirstTrueMD5Large(b *testing.B) {
 
 func BenchmarkSeqProductBytesIntoMD5Large(b *testing.B) {
 	passHash := md5.Sum([]byte("zzzz"))
-	alphabet := []byte("abcdefghijklmnopqrstuvwxyz")
 
 	for n := 0; n < b.N; n++ {
 		var result []byte
-		ProductBytesInto(alphabet, 4, func(value []byte) bool {
+		ProductBytesInto(AsciiLowercaseBytes, 4, func(value []byte) bool {
 			hash := md5.Sum(value)
 			if bytes.Equal(hash[:], passHash[:]) {
 				result = append(result[:0], value...)

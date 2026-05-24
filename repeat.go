@@ -12,11 +12,11 @@ func Repeat[T any](value T, n int) iter.Seq[T] {
 					return
 				}
 			}
-		}
-
-		for i := 0; i < n; i++ {
-			if !yield(value) {
-				return
+		} else {
+			for i := 0; i < n; i++ {
+				if !yield(value) {
+					return
+				}
 			}
 		}
 	}

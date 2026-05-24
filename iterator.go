@@ -44,14 +44,13 @@ func Chan2[A, B any](ctx context.Context, seq iter.Seq2[A, B]) <-chan Pair[A, B]
 	ch := make(chan Pair[A, B])
 	go func() {
 		defer close(ch)
-		seq(func(first A, second B) bool {
+		for first, second := range seq {
 			select {
 			case <-ctx.Done():
-				return false
+				return
 			case ch <- Pair[A, B]{First: first, Second: second}:
-				return true
 			}
-		})
+		}
 	}()
 	return ch
 }
@@ -96,9 +95,8 @@ func SliceUntil[T any](seq iter.Seq[T], stop func(T) bool) []T {
 // Slice2 collects a finite two-value sequence into a slice of pairs.
 func Slice2[A, B any](seq iter.Seq2[A, B]) []Pair[A, B] {
 	result := make([]Pair[A, B], 0)
-	seq(func(first A, second B) bool {
+	for first, second := range seq {
 		result = append(result, Pair[A, B]{First: first, Second: second})
-		return true
-	})
+	}
 	return result
 }

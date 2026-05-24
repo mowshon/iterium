@@ -3,7 +3,6 @@ package iterium
 import (
 	"crypto/md5"
 	"encoding/hex"
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -13,8 +12,6 @@ func BenchmarkDecryptMD5Hash(b *testing.B) {
 
 	for n := 0; n < b.N; n++ {
 		for passLength := range Range(1, 7) {
-			fmt.Println("Password Length:", passLength, "total combinations:", ProductCount(len(AsciiLowercase), passLength))
-
 			join := func(product []string) string {
 				return strings.Join(product, "")
 			}
@@ -24,8 +21,7 @@ func BenchmarkDecryptMD5Hash(b *testing.B) {
 				return hex.EncodeToString(hash[:]) == passHash
 			}
 
-			if result, ok := FirstTrue(Map(Product(AsciiLowercase, passLength), join), sameHash); ok {
-				fmt.Println("Raw password:", result)
+			if _, ok := FirstTrue(Map(Product(AsciiLowercase, passLength), join), sameHash); ok {
 				break
 			}
 		}

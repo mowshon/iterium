@@ -34,3 +34,24 @@ func TestRangeZeroStep(t *testing.T) {
 func TestRangeFloat(t *testing.T) {
 	assert.Exactly(t, []float64{0, 1.5, 3, 4.5, 6, 7.5, 9}, Slice(Range(0.0, 10.0, 1.5)))
 }
+
+func TestRangeCountIntegerPrecision(t *testing.T) {
+	const start = int64(1 << 53)
+
+	assert.Exactly(t, int64(3), RangeCount(start, start+3, int64(1)))
+	assert.Exactly(t, int64(3), RangeCount(start+3, start, int64(-1)))
+}
+
+func TestRangeCountUnsigned(t *testing.T) {
+	assert.Exactly(t, int64(4), RangeCount(uint64(0), uint64(10), uint64(3)))
+}
+
+func TestRangeCountDefinedNumericTypes(t *testing.T) {
+	type localInt int64
+	type localFloat float64
+	type localUint uint64
+
+	assert.Exactly(t, int64(3), RangeCount(localInt(1<<53), localInt((1<<53)+3), localInt(1)))
+	assert.Exactly(t, int64(4), RangeCount(localFloat(0), localFloat(1), localFloat(0.25)))
+	assert.Exactly(t, int64(4), RangeCount(localUint(0), localUint(10), localUint(3)))
+}

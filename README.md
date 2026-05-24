@@ -7,11 +7,11 @@ Version 2 uses `iter.Seq` and `iter.Seq2` as the public API. Iterators are synch
 ## Installation
 
 ```bash
-go get github.com/mowshon/iterium/v2
+go get github.com/mowshon/iterium
 ```
 
 ```go
-import "github.com/mowshon/iterium/v2"
+import "github.com/mowshon/iterium"
 ```
 
 Iterium v2 requires Go 1.23.4 or newer.
@@ -120,11 +120,13 @@ The `*CountOK` variants report integer overflow instead of saturating.
 Safe sequence APIs yield slices that callers can keep. The `Into` APIs reuse a buffer for speed:
 
 ```go
-iterium.ProductInto([]byte("abc"), 2, func(value []byte) bool {
+iterium.ProductBytesInto(iterium.AsciiLowercaseBytes, 4, func(value []byte) bool {
 	// Copy value here if it must live after this callback.
 	return true
 })
 ```
+
+Byte and rune alphabet variables such as `AsciiLowercaseBytes`, `DigitsBytes`, and `HexDigitsRunes` are provided for these fast paths.
 
 Available reused-buffer APIs:
 

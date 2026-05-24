@@ -5,7 +5,7 @@ Iterium v2 replaces the old channel-backed `Iter[T]` API with Go's official `ite
 ## Module Path
 
 ```go
-import "github.com/mowshon/iterium/v2"
+import "github.com/mowshon/iterium"
 ```
 
 ## Iteration
@@ -128,6 +128,8 @@ iterium.TakeWhile(iterium.Count[int](), func(value int) bool { return value < 3 
 iterium.DropWhile(iterium.Range(5), func(value int) bool { return value < 3 })
 iterium.StarMap(iterium.Product([]int{1, 2}, 2), func(a, b int) int { return a + b })
 ```
+
+`StarMap` is binary in v2.0.0 and expects each yielded slice to contain at least two values.
 
 ```go
 value, ok := iterium.FirstTrue(iterium.Range(5), func(value int) bool { return value == 3 })

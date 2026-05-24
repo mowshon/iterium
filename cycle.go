@@ -5,7 +5,7 @@ import "iter"
 // Cycle yields values from seq, lazily caching the first pass, then replays the cache forever.
 func Cycle[T any](seq iter.Seq[T]) iter.Seq[T] {
 	return func(yield func(T) bool) {
-		saved := make([]T, 0)
+		saved := make([]T, 0, 16)
 
 		for value := range seq {
 			saved = append(saved, value)

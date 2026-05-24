@@ -39,7 +39,7 @@ func ProductCountOK(countOfSymbols, repeat int) (int64, bool) {
 func Product[T any](symbols []T, repeat int) iter.Seq[[]T] {
 	return func(yield func([]T) bool) {
 		ProductInto(symbols, repeat, func(value []T) bool {
-			out := make([]T, len(value))
+			out := make([]T, repeat)
 			copy(out, value)
 			return yield(out)
 		})
