@@ -26,6 +26,10 @@ func CombinationsWithReplacementCountOK(n, k int) (int64, bool) {
 	if n == 0 && k > 0 {
 		return 0, true
 	}
+	maxInt := int(^uint(0) >> 1)
+	if n > maxInt-k+1 {
+		return math.MaxInt64, false
+	}
 	return CombinationsCountOK(n+k-1, k)
 }
 
@@ -64,15 +68,17 @@ func CombinationsWithReplacementInto[T any](symbols []T, r int, yield func([]T) 
 			return
 		}
 
-		i := r - 1
-		for ; i >= 0 && indices[i] == n-1; i-- {
-		}
-		if i < 0 {
-			return
-		}
-		indices[i]++
-		for j := i + 1; j < r; j++ {
-			indices[j] = indices[i]
+		for i := r - 1; ; i-- {
+			if i < 0 {
+				return
+			}
+			if indices[i] != n-1 {
+				indices[i]++
+				for j := i + 1; j < r; j++ {
+					indices[j] = indices[i]
+				}
+				break
+			}
 		}
 	}
 }

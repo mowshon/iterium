@@ -1,6 +1,7 @@
 package iterium
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,4 +26,11 @@ func TestCombinationsWithReplacementCount(t *testing.T) {
 	assert.Exactly(t, int64(120), CombinationsWithReplacementCount(15, 2))
 	assert.Exactly(t, int64(3365856), CombinationsWithReplacementCount(26, 7))
 	assert.Exactly(t, int64(1), CombinationsWithReplacementCount(0, 0))
+}
+
+func TestCombinationsWithReplacementCountOKDetectsIntOverflow(t *testing.T) {
+	count, ok := CombinationsWithReplacementCountOK(int(^uint(0)>>1), 2)
+
+	assert.False(t, ok)
+	assert.Exactly(t, int64(math.MaxInt64), count)
 }

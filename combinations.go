@@ -101,15 +101,17 @@ func CombinationsInto[T any](symbols []T, r int, yield func([]T) bool) {
 			return
 		}
 
-		i := r - 1
-		for ; i >= 0 && indices[i] == i+n-r; i-- {
-		}
-		if i < 0 {
-			return
-		}
-		indices[i]++
-		for j := i + 1; j < r; j++ {
-			indices[j] = indices[j-1] + 1
+		for i := r - 1; ; i-- {
+			if i < 0 {
+				return
+			}
+			if indices[i] != i+n-r {
+				indices[i]++
+				for j := i + 1; j < r; j++ {
+					indices[j] = indices[j-1] + 1
+				}
+				break
+			}
 		}
 	}
 }

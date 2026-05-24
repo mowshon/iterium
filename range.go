@@ -6,6 +6,7 @@ import (
 	"reflect"
 )
 
+// RangeCount returns the number of values Range would yield, saturating on overflow.
 func RangeCount[N Number](start, stop, step N) int64 {
 	if step == 0 {
 		return 0
@@ -82,19 +83,19 @@ func rangeCountInt(start, stop, step int64) int64 {
 		if stop <= start {
 			return 0
 		}
-		return ceilDivUint64(uint64(stop)-uint64(start), uint64(step))
+		return ceilDivUint64(uint64(stop)-uint64(start), uint64(step)) //nolint:gosec // unsigned subtraction intentionally handles the full int64 distance.
 	}
 	if stop >= start {
 		return 0
 	}
-	return ceilDivUint64(uint64(start)-uint64(stop), int64Magnitude(step))
+	return ceilDivUint64(uint64(start)-uint64(stop), int64Magnitude(step)) //nolint:gosec // unsigned subtraction intentionally handles the full int64 distance.
 }
 
 func int64Magnitude(value int64) uint64 {
 	if value >= 0 {
 		return uint64(value)
 	}
-	return uint64(-(value + 1)) + 1
+	return uint64(-(value + 1)) + 1 //nolint:gosec // value is negative; this avoids overflowing math.MinInt64.
 }
 
 func ceilDivUint64(value, divisor uint64) int64 {

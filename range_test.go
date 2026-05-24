@@ -1,6 +1,7 @@
 package iterium
 
 import (
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -40,6 +41,11 @@ func TestRangeCountIntegerPrecision(t *testing.T) {
 
 	assert.Exactly(t, int64(3), RangeCount(start, start+3, int64(1)))
 	assert.Exactly(t, int64(3), RangeCount(start+3, start, int64(-1)))
+}
+
+func TestRangeCountIntegerOverflowSaturates(t *testing.T) {
+	assert.Exactly(t, int64(math.MaxInt64), RangeCount(int64(math.MinInt64), int64(math.MaxInt64), int64(1)))
+	assert.Exactly(t, int64(math.MaxInt64), RangeCount(int64(math.MaxInt64), int64(math.MinInt64), int64(-1)))
 }
 
 func TestRangeCountUnsigned(t *testing.T) {

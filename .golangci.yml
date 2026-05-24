@@ -1,0 +1,39 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard
+  enable:
+    - asciicheck
+    - bidichk
+    - copyloopvar
+    - dupword
+    - gocritic
+    - gosec
+    - misspell
+    - nolintlint
+    - revive
+    - testifylint
+    - unconvert
+    - usestdlibvars
+    - wastedassign
+  settings:
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+        - name: var-naming
+          disabled: true
+  exclusions:
+    rules:
+      - path: '(^|/)examples/|_test\.go$'
+        linters:
+          - gosec
+        text: 'G(101|401|501):'
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
