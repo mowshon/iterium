@@ -59,26 +59,32 @@ func CombinationsWithReplacementInto[T any](symbols []T, r int, yield func([]T) 
 
 	indices := make([]int, r)
 	result := make([]T, r)
+	first := symbols[0]
+	for i := range result {
+		result[i] = first
+	}
 
 	for {
-		for i, index := range indices {
-			result[i] = symbols[index]
-		}
 		if !yield(result) {
 			return
 		}
 
-		for i := r - 1; ; i-- {
-			if i < 0 {
-				return
-			}
+		i := r - 1
+		for ; i >= 0; i-- {
 			if indices[i] != n-1 {
-				indices[i]++
-				for j := i + 1; j < r; j++ {
-					indices[j] = indices[i]
-				}
 				break
 			}
+		}
+		if i < 0 {
+			return
+		}
+
+		indices[i]++
+		value := symbols[indices[i]]
+		result[i] = value
+		for j := i + 1; j < r; j++ {
+			indices[j] = indices[i]
+			result[j] = value
 		}
 	}
 }

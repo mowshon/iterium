@@ -72,3 +72,14 @@ func TestProductIntoReusesBuffer(t *testing.T) {
 
 	assert.Exactly(t, []byte("aa"), first)
 }
+
+func TestProductStringInto(t *testing.T) {
+	var values []string
+
+	ProductStringInto("ab", 2, func(value []byte) bool {
+		values = append(values, string(value))
+		return true
+	})
+
+	assert.Exactly(t, []string{"aa", "ab", "ba", "bb"}, values)
+}

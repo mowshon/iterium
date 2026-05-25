@@ -49,6 +49,7 @@ func Product[T any](symbols []T, repeat int) iter.Seq[[]T] {
 // ProductInto generates Cartesian products using a reused result buffer.
 // The yielded slice is only valid until the next yield call.
 func ProductInto[T any](symbols []T, repeat int, yield func([]T) bool) {
+	n := len(symbols)
 	if repeat < 0 {
 		return
 	}
@@ -56,24 +57,30 @@ func ProductInto[T any](symbols []T, repeat int, yield func([]T) bool) {
 		yield([]T{})
 		return
 	}
-	if len(symbols) == 0 {
+	if n == 0 {
 		return
 	}
 
 	indices := make([]int, repeat)
 	result := make([]T, repeat)
+	first := symbols[0]
+	for i := range result {
+		result[i] = first
+	}
 
 	for {
-		for i, index := range indices {
-			result[i] = symbols[index]
-		}
 		if !yield(result) {
 			return
 		}
 
 		for i := repeat - 1; i >= 0; i-- {
 			indices[i]++
-			if indices[i] < len(symbols) {
+			if indices[i] < n {
+				result[i] = symbols[indices[i]]
+				for j := i + 1; j < repeat; j++ {
+					indices[j] = 0
+					result[j] = first
+				}
 				break
 			}
 			if i == 0 {
@@ -87,6 +94,7 @@ func ProductInto[T any](symbols []T, repeat int, yield func([]T) bool) {
 // ProductBytesInto is a specialized zero-allocation product generator for byte alphabets.
 // The yielded slice is reused and must be copied by callers that keep it.
 func ProductBytesInto(symbols []byte, repeat int, yield func([]byte) bool) {
+	n := len(symbols)
 	if repeat < 0 {
 		return
 	}
@@ -94,24 +102,30 @@ func ProductBytesInto(symbols []byte, repeat int, yield func([]byte) bool) {
 		yield([]byte{})
 		return
 	}
-	if len(symbols) == 0 {
+	if n == 0 {
 		return
 	}
 
 	indices := make([]int, repeat)
 	result := make([]byte, repeat)
+	first := symbols[0]
+	for i := range result {
+		result[i] = first
+	}
 
 	for {
-		for i, index := range indices {
-			result[i] = symbols[index]
-		}
 		if !yield(result) {
 			return
 		}
 
 		for i := repeat - 1; i >= 0; i-- {
 			indices[i]++
-			if indices[i] < len(symbols) {
+			if indices[i] < n {
+				result[i] = symbols[indices[i]]
+				for j := i + 1; j < repeat; j++ {
+					indices[j] = 0
+					result[j] = first
+				}
 				break
 			}
 			if i == 0 {
@@ -125,7 +139,46 @@ func ProductBytesInto(symbols []byte, repeat int, yield func([]byte) bool) {
 // ProductStringInto is a specialized product generator for string alphabets.
 // The yielded byte slice is reused and must be copied by callers that keep it.
 func ProductStringInto(symbols string, repeat int, yield func([]byte) bool) {
-	ProductBytesInto([]byte(symbols), repeat, yield)
+	n := len(symbols)
+	if repeat < 0 {
+		return
+	}
+	if repeat == 0 {
+		yield([]byte{})
+		return
+	}
+	if n == 0 {
+		return
+	}
+
+	indices := make([]int, repeat)
+	result := make([]byte, repeat)
+	first := symbols[0]
+	for i := range result {
+		result[i] = first
+	}
+
+	for {
+		if !yield(result) {
+			return
+		}
+
+		for i := repeat - 1; i >= 0; i-- {
+			indices[i]++
+			if indices[i] < n {
+				result[i] = symbols[indices[i]]
+				for j := i + 1; j < repeat; j++ {
+					indices[j] = 0
+					result[j] = first
+				}
+				break
+			}
+			if i == 0 {
+				return
+			}
+			indices[i] = 0
+		}
+	}
 }
 
 // ProductRunesInto is a specialized product generator for rune alphabets.

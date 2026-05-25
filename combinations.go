@@ -91,27 +91,29 @@ func CombinationsInto[T any](symbols []T, r int, yield func([]T) bool) {
 	result := make([]T, r)
 	for i := range indices {
 		indices[i] = i
+		result[i] = symbols[i]
 	}
 
 	for {
-		for i, index := range indices {
-			result[i] = symbols[index]
-		}
 		if !yield(result) {
 			return
 		}
 
-		for i := r - 1; ; i-- {
-			if i < 0 {
-				return
-			}
+		i := r - 1
+		for ; i >= 0; i-- {
 			if indices[i] != i+n-r {
-				indices[i]++
-				for j := i + 1; j < r; j++ {
-					indices[j] = indices[j-1] + 1
-				}
 				break
 			}
+		}
+		if i < 0 {
+			return
+		}
+
+		indices[i]++
+		result[i] = symbols[indices[i]]
+		for j := i + 1; j < r; j++ {
+			indices[j] = indices[j-1] + 1
+			result[j] = symbols[indices[j]]
 		}
 	}
 }

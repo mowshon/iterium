@@ -23,5 +23,6 @@ go test ./examples/...
 - Reused-buffer APIs: `product_into`, `product_bytes_into`, `product_string_into`, `product_runes_into`, `combinations_into`, `combinations_with_replacement_into`, `permutations_into`
 - Adapters: `slice`, `slicen`, `sliceuntil`, `slice2`, `chan`, `chan2`
 - Constants: `alphabets`
+- Applied demos: `md5_crack`
 
 The safe sequence APIs yield values that callers can keep. The `Into` examples copy the reused buffer before storing it.
