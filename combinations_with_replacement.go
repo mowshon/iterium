@@ -1,54 +1,90 @@
 package iterium
 
 import (
-	"math/big"
+	"iter"
+	"math"
 )
 
 // CombinationsWithReplacementCount calculates the total number of combinations with replacement
 // for a given set of n elements and a combination length of k.
 func CombinationsWithReplacementCount(n, k int) int64 {
-	// The function uses the binomial coefficient formula to
-	// calculate the total number of combinations with replacement.
-	numerator := big.NewInt(1).Binomial(int64(n+k-1), int64(k))
-	return numerator.Int64()
+	count, ok := CombinationsWithReplacementCountOK(n, k)
+	if !ok {
+		return math.MaxInt64
+	}
+	return count
 }
 
-// CombinationsWithReplacement generates all possible combinations with replacement
-// of a given set of elements.
-func CombinationsWithReplacement[T any](symbols []T, k int) Iter[[]T] {
-	arr := placeHolders(len(symbols))
-	total := CombinationsWithReplacementCount(len(symbols), k)
-	iter := Instance[[]T](total, false)
+// CombinationsWithReplacementCountOK returns replacement combination count and reports overflow.
+func CombinationsWithReplacementCountOK(n, k int) (int64, bool) {
+	if n < 0 || k < 0 {
+		return 0, false
+	}
+	if k == 0 {
+		return 1, true
+	}
+	if n == 0 && k > 0 {
+		return 0, true
+	}
+	maxInt := int(^uint(0) >> 1)
+	if n > maxInt-k+1 {
+		return math.MaxInt64, false
+	}
+	return CombinationsCountOK(n+k-1, k)
+}
 
-	go func() {
-		defer IterRecover()
-		defer iter.Close()
+// CombinationsWithReplacement returns r-length combinations with replacement.
+// Each yielded slice is safe to keep.
+func CombinationsWithReplacement[T any](symbols []T, r int) iter.Seq[[]T] {
+	return func(yield func([]T) bool) {
+		CombinationsWithReplacementInto(symbols, r, func(value []T) bool {
+			out := make([]T, r)
+			copy(out, value)
+			return yield(out)
+		})
+	}
+}
 
-		comb := make([]int, k)
-		for i := range comb {
-			comb[i] = -1
+// CombinationsWithReplacementInto generates replacement combinations using a reused result buffer.
+// The yielded slice is only valid until the next yield call.
+func CombinationsWithReplacementInto[T any](symbols []T, r int, yield func([]T) bool) {
+	n := len(symbols)
+	if r < 0 || (n == 0 && r > 0) {
+		return
+	}
+	if r == 0 {
+		yield([]T{})
+		return
+	}
+
+	indices := make([]int, r)
+	result := make([]T, r)
+	first := symbols[0]
+	for i := range result {
+		result[i] = first
+	}
+
+	for {
+		if !yield(result) {
+			return
 		}
 
-		// Define a recursive function to generate combinations.
-		var generateCombination func(start, combIndex int)
-		generateCombination = func(start, combIndex int) {
-			if combIndex == k {
-				// When a combination is complete, send it to the channel.
-				result := make([]T, k)
-				replacePlaceholders[T](symbols, comb, &result)
-				iter.Chan() <- result
-				return
-			}
-
-			for i := start; i < len(arr); i++ {
-				comb[combIndex] = arr[i]
-				// Recursively generate the rest of the combination.
-				generateCombination(i, combIndex+1)
+		i := r - 1
+		for ; i >= 0; i-- {
+			if indices[i] != n-1 {
+				break
 			}
 		}
+		if i < 0 {
+			return
+		}
 
-		generateCombination(0, 0)
-	}()
-
-	return iter
+		indices[i]++
+		value := symbols[indices[i]]
+		result[i] = value
+		for j := i + 1; j < r; j++ {
+			indices[j] = indices[i]
+			result[j] = value
+		}
+	}
 }

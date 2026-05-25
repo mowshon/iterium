@@ -1,17 +1,37 @@
 package iterium
 
 import (
+	"iter"
 	"math"
+	"reflect"
 )
 
+// RangeCount returns the number of values Range would yield, saturating on overflow.
 func RangeCount[N Number](start, stop, step N) int64 {
-	a, b, c := float64(start), float64(stop), float64(step)
-	return int64(math.Ceil((b - a) / c))
+	if step == 0 {
+		return 0
+	}
+
+	switch reflect.TypeOf(start).Kind() {
+	case reflect.Float32, reflect.Float64:
+		a, b, c := float64(start), float64(stop), float64(step)
+		count := math.Ceil((b - a) / c)
+		if count < 0 {
+			return 0
+		}
+		if count > math.MaxInt64 {
+			return math.MaxInt64
+		}
+		return int64(count)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return rangeCountUint(uint64(start), uint64(stop), uint64(step))
+	default:
+		return rangeCountInt(int64(start), int64(stop), int64(step))
+	}
 }
 
-// Range function returns a sequence of numbers, starting from 0 by default, and
-// increments by 1 (by default), and stops before a specified number.
-func Range[S Signed](args ...S) Iter[S] {
+// Range returns a reusable Go iterator sequence of numbers.
+func Range[S Signed](args ...S) iter.Seq[S] {
 	var start, stop, step S
 	var total int64
 
@@ -19,33 +39,72 @@ func Range[S Signed](args ...S) Iter[S] {
 	case 0:
 		return Empty[S]()
 	case 1:
-		// If there is only one value, assign a value to the variable `stop`.
-		stop, start, step = argsTrio(args, 0, 0, 1)
+		stop = args[0]
 		if args[0] < 0 {
 			step = -1
+		} else {
+			step = 1
 		}
 	default:
-		start, stop, step = argsTrio(args, 0, 0, 1)
+		start = args[0]
+		stop = args[1]
+		if len(args) >= 3 {
+			step = args[2]
+		} else {
+			step = 1
+		}
 	}
 
-	// Check if the parameters are logically correct.
 	total = RangeCount(start, stop, step)
 	if total <= 0 {
 		return Empty[S]()
 	}
 
-	// Initialisation of a new channel.
-	iter := Instance[S](total, false)
-
-	go func() {
-		defer IterRecover()
-		defer iter.Close()
-
-		for i := uint(0); i < uint(total); i++ {
-			iter.Chan() <- start
-			start = start + step
+	return func(yield func(S) bool) {
+		next := start
+		for i := int64(0); i < total; i++ {
+			if !yield(next) {
+				return
+			}
+			next += step
 		}
-	}()
+	}
+}
 
-	return iter
+func rangeCountUint(start, stop, step uint64) int64 {
+	if stop <= start {
+		return 0
+	}
+	return ceilDivUint64(stop-start, step)
+}
+
+func rangeCountInt(start, stop, step int64) int64 {
+	if step > 0 {
+		if stop <= start {
+			return 0
+		}
+		return ceilDivUint64(uint64(stop)-uint64(start), uint64(step)) //nolint:gosec // unsigned subtraction intentionally handles the full int64 distance.
+	}
+	if stop >= start {
+		return 0
+	}
+	return ceilDivUint64(uint64(start)-uint64(stop), int64Magnitude(step)) //nolint:gosec // unsigned subtraction intentionally handles the full int64 distance.
+}
+
+func int64Magnitude(value int64) uint64 {
+	if value >= 0 {
+		return uint64(value)
+	}
+	return uint64(-(value + 1)) + 1 //nolint:gosec // value is negative; this avoids overflowing math.MinInt64.
+}
+
+func ceilDivUint64(value, divisor uint64) int64 {
+	quotient := value / divisor
+	if value%divisor != 0 {
+		quotient++
+	}
+	if quotient > uint64(math.MaxInt64) {
+		return math.MaxInt64
+	}
+	return int64(quotient)
 }

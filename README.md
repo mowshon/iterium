@@ -1,727 +1,684 @@
-<h1 id="iterium">🚀 Iterium - Generic Channel-based Iterators</h1>
+# Iterium
 
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=mowshon_iterium&metric=coverage)](https://sonarcloud.io/summary/new_code?id=mowshon_iterium) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=mowshon_iterium&metric=bugs)](https://sonarcloud.io/summary/new_code?id=mowshon_iterium) [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=mowshon_iterium&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=mowshon_iterium) [![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=mowshon_iterium&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=mowshon_iterium) [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=mowshon_iterium&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=mowshon_iterium) [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=mowshon_iterium&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=mowshon_iterium)
+Iterium is Python `itertools` for Go: a lazy iterator toolkit for Golang built on Go's official `iter` package.
 
-The **Iterium** package is a powerful toolkit for creating and manipulating generic iterators in Golang. Inspired by the popular Python **itertools** library, Iterium provides a variety of functions for working with iterators in different ways.
+If you are looking for `itertools` in Go, Iterium provides familiar tools such as `Range`, `Count`, `Repeat`, `Map`, `Filter`, `TakeWhile`, `DropWhile`, `Product`, `Combinations`, `CombinationsWithReplacement`, and `Permutations`. It helps Python developers bring `itertools`-style lazy pipelines, Cartesian products, combinations, and permutations into idiomatic Go `for range` loops.
 
-Iterium is designed to be easy to use and flexible, with a clear and concise API that enables you to create iterators that meet your specific needs. Whether you're working with strings, arrays, slices, or any other data type. **Iterium** makes it easy to traverse, filter, and manipulate your data with ease.
+Use Iterium when you want lazy, synchronous pipelines without creating channels, goroutines, or intermediate slices for every step. It works best for finite data transformations, bounded search spaces, test-case generation, combinatorics, and small adapter boundaries where a slice or channel is needed at the edge.
 
-![Iterium](https://golangify.com/wp-content/uploads/2023/03/iterium-4.png)
+## Benchmark: Iterium vs Python 3.14 `itertools`
 
-### Installation
+These benchmarks compare Iterium best-practice streaming code against Python 3.14 `itertools` equivalents. The Go side uses `Into` APIs where the generated value is only inspected and not retained; this avoids per-item result allocation and is the recommended style for hot combinatoric loops.
 
+Local run: Linux x86_64, Go 1.26.2, Python 3.14.5. Times and peak RSS are best of 3 runs, measured with `/usr/bin/time` after building the Go benchmark binary. RSS is process-level memory, so it includes the Go runtime or Python interpreter baseline. The percent columns are relative reductions versus Python: `(python - iterium) / python`.
+
+| Workload | Results streamed | Iterium API | Python API | Iterium time | Python time | Speedup | Time reduction | Iterium RSS | Python RSS | RSS reduction |
+| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Range -> map -> filter | 10,000,000 range values | `Range` + `Map` + `Filter` | `range` + `map` + generator filter | 0.06 s | 0.94 s | 15.7x | 93.6% | 2.3 MiB | 13.1 MiB | 82.9% |
+| Cartesian product count | 26^5 = 11,881,376 products | `ProductBytesInto` | `itertools.product` | 0.03 s | 0.42 s | 14.0x | 92.9% | 2.3 MiB | 13.1 MiB | 82.9% |
+| MD5 brute force, worst-case `zzzzz` | 26^5 = 11,881,376 MD5 checks | `ProductBytesInto` + `crypto/md5` | `itertools.product` + `hashlib.md5` | 1.26 s | 7.53 s | 6.0x | 83.3% | 2.3 MiB | 13.1 MiB | 82.9% |
+| Combinations count | C(35, 8) = 23,535,820 combinations | `CombinationsInto` | `itertools.combinations` | 0.08 s | 1.01 s | 12.6x | 92.1% | 2.1 MiB | 13.0 MiB | 83.7% |
+| Combinations with replacement count | C(37, 8) = 38,608,020 combinations | `CombinationsWithReplacementInto` | `itertools.combinations_with_replacement` | 0.12 s | 1.60 s | 13.3x | 92.5% | 2.3 MiB | 13.1 MiB | 82.9% |
+| Permutations count | P(12, 8) = 19,958,400 permutations | `PermutationsInto` | `itertools.permutations` | 0.09 s | 0.85 s | 9.4x | 89.4% | 2.3 MiB | 13.0 MiB | 82.7% |
+
+Conclusion: on these streaming workloads, Iterium is roughly 6x to 16x faster than Python 3.14 `itertools` and uses about 83% less peak resident memory as a command-line process. The MD5 crack benchmark is the most realistic mixed workload here because it combines iterator overhead, candidate construction, early stopping, and hashing; Iterium completes the same worst-case 5-letter lowercase search in 1.26 s versus 7.53 s for Python.
+
+For best results in Go, use the regular safe APIs such as `Product`, `Combinations`, and `Permutations` when you need to keep yielded slices. Use the `Into` APIs when you only inspect each value during iteration. In Python, the closest best practice is also to stream with `itertools` and avoid materializing large products or combinations.
+
+Reproduce the comparison:
+
+```bash
+go build -o /tmp/iterium-compare ./benchmarks/compare/go
+for case in range-map-filter product-repeat5 md5-repeat5 combinations combinations-with-replacement permutations; do
+  /usr/bin/time -f "iterium $case: %e seconds, %M KB RSS" /tmp/iterium-compare "$case"
+  /usr/bin/time -f "python  $case: %e seconds, %M KB RSS" /usr/bin/python3.14 benchmarks/compare/python_itertools.py "$case"
+done
 ```
-go get github.com/mowshon/iterium@v1.0.0
+
+Iterium uses `iter.Seq` and `iter.Seq2` as the public API. That means most values are consumed with normal Go `for range` loops:
+
+```go
+for value := range iterium.Range(0, 10, 2) {
+	fmt.Println(value)
+}
 ```
 
-### Import
+## Installation
 
-```golang
+```bash
+go get github.com/mowshon/iterium
+```
+
+```go
 import "github.com/mowshon/iterium"
 ```
 
----------
-### Contents
-- [Decrypting the MD5 hash in Golang](https://github.com/mowshon/iterium#user-content-md5)
-    - [Benchmark](https://github.com/mowshon/iterium#user-content-benchmark)
-- [Iterator architecture](https://github.com/mowshon/iterium#user-content-structure)
-- [Creating an Iterator](https://github.com/mowshon/iterium#user-content-new)
-- [Getting data from an iterator](https://github.com/mowshon/iterium#user-content-get)
-- [Combinatoric iterators](https://github.com/mowshon/iterium#user-content-combinatorics)
-    - 🟢 [Product() - Cartesian Product](https://github.com/mowshon/iterium#user-content-product)
-    - 🟢 [Permutations()](https://github.com/mowshon/iterium#user-content-permutations)
-    - 🟢 [Combinations()](https://github.com/mowshon/iterium#user-content-combinations)
-    - 🟢 [CombinationsWithReplacement()](https://github.com/mowshon/iterium#user-content-combinations-with-replacement)
-- [Infinite iterators](https://github.com/mowshon/iterium#user-content-infinite)
-    - 🔴 [Count()](https://github.com/mowshon/iterium#user-content-count)
-    - 🔴 [Cycle()](https://github.com/mowshon/iterium#user-content-cycle)
-    - 🔴 [Repeat()](https://github.com/mowshon/iterium#user-content-repeat)
-- [Finite iterators](https://github.com/mowshon/iterium#user-content-finite)
-    - 🔵 [Range()](https://github.com/mowshon/iterium#user-content-range)
-    - 🔵 [Map()](https://github.com/mowshon/iterium#user-content-map)
-    - 🔵 [StarMap()](https://github.com/mowshon/iterium#user-content-starmap)
-    - 🔵 [Filter()](https://github.com/mowshon/iterium#user-content-filter)
-    - 🔵 [FilterFalse()](https://github.com/mowshon/iterium#user-content-filter-false)
-    - 🔵 [Accumulate()](https://github.com/mowshon/iterium#user-content-accumulate)
-    - 🔵 [TakeWhile()](https://github.com/mowshon/iterium#user-content-take-while)
-    - 🔵 [DropWhile()](https://github.com/mowshon/iterium#user-content-drop-while)
-- [Create your own iterator](https://github.com/mowshon/iterium#user-content-custom)
----------
+Iterium requires Go 1.23.4 or newer.
 
-**Iterium** provides a powerful set of tools for fast and easy data processing and transformations.
+## Quick Example
 
-<h2 id="md5">Decrypting the MD5 hash in Golang</h2>
-
-Before we move on to explore each iterator in particular, let me give you a small example of **decrypting an md5 hash in a few lines of code** using **Iterium**. Assume that our password consists only of **lower-case Latin letters** and we don't know exactly its length, but assume no more than 6 characters. 
-
-```golang
-// result of md5("qwerty") = d8578edf8458ce06fbc5bb76a58c5ca4
-passHash := "d8578edf8458ce06fbc5bb76a58c5ca4"
-
-for passLength := range Range(1, 7).Chan() {
-    fmt.Println("Password Length:", passLength)
-
-    // Merge a slide into a string.
-    // []string{"a", "b", "c"} => "abc"
-    join := func(product []string) string {
-        return strings.Join(product, "")
-    }
-
-    // Check the hash of a raw password with an unknown hash.
-    sameHash := func(rawPassword string) bool {
-        hash := md5.Sum([]byte(rawPassword))
-        return hex.EncodeToString(hash[:]) == passHash
-    }
-
-    // Combine iterators to achieve the goal...
-    decrypt := FirstTrue(Map(Product(AsciiLowercase, passLength), join), sameHash)
-
-    if result, err := decrypt.Next(); err == nil {
-        fmt.Println("Raw password:", result)
-        break
-    }
-}
-```
-
-Output:
-
-```
-Raw password: qwerty
-```
-
-Let's look at what's going on here. The main thing we are interested in is the line:
-
-```golang
-decrypt := FirstTrue(Map(Product(ascii, passLength), join), sameHash)
-```
-
-- Initially the `Product` iterator **generates all possible combinations** of Latin letters from a certain length, and returns a slice like `[]string{"p", "a", "s", "s"}`. [AsciiLowercase](https://github.com/mowshon/iterium/blob/main/string.go) is a slice of all lowercase Latin letters.;
-- Sending `Product` iterator to `Map` iterator which will use a closure-function to merge the slice into a string, like `[]string{"a", "b"} => "ab"`;
-- Sending the obtained iterator from `Map` to the `FirstTrue` iterator, which returns the first value from `Map` that returned **true** after applying the `sameHash()` function to it;
-- The `sameHash()` function turns the received string from the `Map` iterator into an md5 hash and checks if it matches with the unknown hash.
-
-<h2 id="benchmark">Benchmark ⏰</h2>
-
-One of the special features of this package (compared to the python module) is the ability to **know the exact number of combinations** before running the process.
-
-```golang
-Product([]string{"a", "b", "c", "d"}, 10).Count() # 1048576 possible combinations
-```
-
-#### 🔑 How many total combinations of possible passwords did it take to crack a 6-character md5 hash?
-
-```
-Password Length: 1, total combinations: 26
-Password Length: 2, total combinations: 676
-Password Length: 3, total combinations: 17576
-Password Length: 4, total combinations: 456976
-Password Length: 5, total combinations: 11881376
-Password Length: 6, total combinations: 308915776
-```
-
-```
-goos: linux
-goarch: amd64
-pkg: github.com/mowshon/iterium
-cpu: AMD Ryzen 5 3600 6-Core Processor              
-BenchmarkDecryptMD5Hash
-
-Raw password: qwerty
-BenchmarkDecryptMD5Hash-12             1  254100234180 ns/op
-```
-
-The hash was cracked in `4.23` minutes. This is just using the capabilities of the iterium package.
-
-<h2 id="structure">Iterator architecture</h2>
-
-Each iterator corresponds to the following interface:
-
-```golang
-// Iter is the iterator interface with all the necessary methods.
-type Iter[T any] interface {
-    IsInfinite() bool
-    SetInfinite(bool)
-    Next() (T, error)
-    Chan() chan T
-    Close()
-    Slice() ([]T, error)
-    Count() int64
-}
-```
-Description of the methods:
-- `IsInfinite()` returns the iterator infinite state;
-- `SetInfinite()` update the infinity state of the iterator;
-- `Chan()` returns the iterator channel;
-- `Next()` returns the next value or error from the iterator channel;
-- `Close()` closes the iterator channel;
-- `Count()` returns the number of possible values the iterator can return;
-- `Slice()` turns the iterator into a slice of values;
-
-<h2 id="new">Creating an Iterator</h2>
-
-You can use the function `iterium.New(1, 2, 3)` or `iterium.New("a", "b", "c")` to create a new iterator.
-
-```golang
-package main
-
-import (
-    "github.com/mowshon/iterium"
+```go
+values := iterium.Filter(
+	iterium.Map(iterium.Range(0, 10), func(value int) int {
+		return value + 1
+	}),
+	func(value int) bool {
+		return value%2 == 0
+	},
 )
 
-type Store struct {
-    price float64
-}
-
-func main() {
-    iterOfInt := iterium.New(1, 2, 3)
-    iterOfString := iterium.New("A", "B", "C")
-    iterOfStruct := iterium.New(Store{10.5}, Store{5.1}, Store{0.15})
-    iterOfFunc := iterium.New(
-        func(x int) int {return x + 1},
-        func(y int) int {return y * 2},
-        func(z int) int {return z / 3},
-    )
-}
+fmt.Println(iterium.Slice(values)) // [2 4 6 8 10]
 ```
 
-<h2 id="get">Getting data from an iterator</h2>
+The sequence above is lazy. `Range` does not build a slice of numbers, `Map` does not build a slice of mapped values, and `Filter` only evaluates values as the final consumer asks for them.
 
-There are two ways to retrieve data from an iterator. The first way is to use the `Next()` method or read values from the iterator channel `range iter.Chan()`.
+## How Iterium Fits Go
 
-Using the `Next()` method:
-```golang
-func main() {
-    iterOfInt := iterium.New(1, 2, 3)
+Go's standard iterator type is a function that pushes values into a `yield` callback. When the consumer breaks from a `for range` loop, `yield` returns false and the iterator stops early.
 
-    for {
-        value, err := iterOfInt.Next()
-        if err != nil {
-            break
-        }
-        
-        fmt.Println(value)
-    }
-}
-```
+Use Iterium when:
 
-Reading from the channel:
+- You want reusable sequence helpers with the normal `for value := range seq` syntax.
+- You want Python-like iterator tools in Go without hiding goroutines or channels.
+- You need combinatorics such as Cartesian products, combinations, and permutations.
+- You want to stop early without generating the rest of a sequence.
 
-```golang
-func main() {
-    iterOfInt := iterium.New(1, 2, 3)
+Prefer a plain `for` loop when the logic is shorter and clearer as direct Go code. Iterators are strongest when they express a pipeline or reusable sequence.
 
-    for value := range iterOfInt.Chan() {
-        fmt.Println(value)
-    }
-}
-```
+## Sources
 
-<h1 id="combinatorics">Combinatoric iterators</h1>
+Sources create sequences.
 
-Combinatoric iterators are a powerful tool for solving problems that involve generating all possible combinations or permutations of a slice of elements, and are widely used in a range of fields and applications.
+| Function | Produces | Common use case |
+| --- | --- | --- |
+| `New(values...)` | The provided values | Turn a small list into a sequence for a pipeline |
+| `Empty[T]()` | No values | Return an empty sequence from generic code |
+| `Range(args...)` | A finite numeric range | Page numbers, IDs, offsets, bounded numeric work |
+| `Count(args...)` | An unbounded numeric sequence | Generate indexes or ticks until another step stops |
+| `Repeat(value, n)` | A repeated value | Fill defaults, pair constants with generated values |
 
-<h2 id="product">🟢 iterium.Product([]T, length) - Cartesian Product</h2>
+### New
 
-The iterator generates a **Cartesian product** depending on the submitted slice of values and the required length. The **Cartesian product** is a mathematical concept that refers to the set of all possible ordered pairs formed by taking one element from each of two sets. 
+`New` is the smallest source. Use it when values are already known and you want to feed them through the same iterator pipeline as generated data.
 
-In the case of `iterium.Product()`, the Cartesian product is formed by taking one element from each of the input slice.
-
-```golang
-product := iterium.Product([]string{"A", "B", "C", "D"}, 2)
-toSlice, _ := product.Slice()
-
-fmt.Println("Total:", product.Count())
-fmt.Println(toSlice)
-```
-
-Output:
-
-```
-Total: 16
-
-[
-    [A, A] [A, B] [A, C] [A, D] [B, A] [B, B] [B, C] [B, D]
-    [C, A] [C, B] [C, C] [C, D] [D, A] [D, B] [D, C] [D, D]
-]
-```
-
-<h2 id="permutations">🟢 iterium.Permutations([]T, length)</h2>
-
-`Permutations()` returns an iterator that generates all possible permutations of a given slice. A permutation is an arrangement of elements in a specific order, where each arrangement is different from all others.
-
-```golang
-permutations := iterium.Permutations([]string{"A", "B", "C", "D"}, 2)
-toSlice, _ := permutations.Slice()
-
-fmt.Println("Total:", permutations.Count())
-fmt.Println(toSlice)
-```
-
-Result:
-
-```
-Total: 12
-
-[
-    [A, B] [A, C] [A, D] [B, A] [B, C] [B, D]
-    [C, B] [C, A] [C, D] [D, B] [D, C] [D, A]
-]
-```
-
-<h2 id="combinations">🟢 iterium.Combinations([]T, length)</h2>
-
-`Combinations()` returns an iterator that generates all possible combinations of a given length from a given slice. A combination is a selection of items from a slice, such that the order in which the items are selected does not matter. 
-
-```golang
-combinations := iterium.Combinations([]string{"A", "B", "C", "D"}, 2)
-toSlice, _ := combinations.Slice()
-
-fmt.Println("Total:", combinations.Count())
-fmt.Println(toSlice)
-```
-
-Output:
-
-```
-Total: 6
-
-[
-    [A, B] [A, C] [A, D] [B, C] [B, D] [C, D]
-]
-```
-
-<h2 id="combinations-with-replacement">🟢 iterium.CombinationsWithReplacement([]T, length)</h2>
-
-`CombinationsWithReplacement()` generates all possible combinations of a given slice, **including the repeated elements**.
-
-```golang
-result := iterium.CombinationsWithReplacement([]string{"A", "B", "C", "D"}, 2)
-toSlice, _ := result.Slice()
-
-fmt.Println("Total:", result.Count())
-fmt.Println(toSlice)
-```
-
-Output:
-
-```
-Total: 10
-
-[
-    [A, A] [A, B] [A, C] [A, D] [B, B]
-    [B, C] [B, D] [C, C] [C, D] [D, D]
-]
-```
-
-<h1 id="infinite">Infinite iterators</h1>
-
-Infinite iterators are a type of iterator that generate an **endless sequence of values**, without ever reaching an endpoint. Unlike finite iterators, which generate a fixed number of values based on the size of a given iterable data structure, infinite iterators continue to generate values indefinitely, until they are stopped or interrupted.
-
-<h2 id="count">🔴 iterium.Count(start, step)</h2>
-
-`Count()` returns an iterator that generates an infinite stream of values, starting from a specified number and incrementing by a specified step.
-
-```golang
-stream := iterium.Count(0, 3)
-
-// Retrieve the first 5 values from the iterator.
-for i := 0; i <= 5; i++ {
-    value, err := stream.Next()
-    if err != nil {
-        break
-    }
-
-    fmt.Println(value)
-}
-
-stream.Close()
-```
-
-Output:
-
-```
-0, 3, 6, 9, 12, 15
-```
-
-<h2 id="cycle">🔴 iterium.Cycle(Iterator)</h2>
-
-`Cycle()` returns an iterator that cycles endlessly through an iterator. Note that since `iterium.Cycle()` generates an infinite stream of values, you should be careful not to use it in situations where you do not want to generate an infinite loop. Also, if the iterator passed to `Cycle()` is empty, the iterator will not generate any values **and will immediately close the channel**.
-
-```golang
-cycle := iterium.Cycle(iterium.Range(3))
-
-for i := 0; i <= 11; i++ {
-    value, err := cycle.Next()
-    if err != nil {
-        break
-    }
-
-    fmt.Print(value, ", ")
-}
-```
-
-Output:
-
-```
-0, 1, 2, 0, 1, 2, 0, 1, 2, 0, 1, 2
-```
-
-<h2 id="repeat">🔴 iterium.Repeat(value, n)</h2>
-
-`Repeat()` returns an iterator that repeats a specified value **infinitely** `n = -1` or a **specified number of times** `n = 50`.
-
-Here's an example code snippet that demonstrates how to use `iterium.Repeat()`:
-
-```golang
-type User struct {
-    Username string
-}
-
-func main() {
-    // To receive an infinite iterator, you 
-    // need to specify a length of -1
-    users := iterium.Repeat(User{"mowshon"}, 3)
-    slice, _ := users.Slice()
-
-    fmt.Println(slice)
-    fmt.Println(slice[1].Username)
-}
-```
-
-Output:
-
-```
-[ User{mowshon}, User{mowshon}, User{mowshon} ]
-mowshon
-```
-
-<h1 id="finite">Finite iterators</h1>
-
-Finite iterators return iterators that terminate as soon as any of the input sequences they iterate over are exhausted.
-
-<h2 id="range">🔵 iterium.Range(start, stop, step)</h2>
-
-`Range()` generates a sequence of numbers. It takes up to three arguments:
-
-```golang
-iterium.Range(end) # starts from 0 to the end with step = +1
-iterium.Range(start, end) # step is +1
-iterium.Range(start, end, step)
-```
-
-- `start`: (optional) Starting number of the sequence. Defaults to 0 if not provided.
-- `stop`: (required) Ending number of the sequence.
-- `step`: (optional) Step size of the sequence. Defaults to 1 if not provided.
-
-Here's an example code snippet that demonstrates how to use `iterium.Range()`:
-
-```golang
-first, _ := iterium.Range(5).Slice()
-second, _ := iterium.Range(-5).Slice()
-third, _ := iterium.Range(0, 10, 2).Slice()
-float, _ := iterium.Range(0.0, 10.0, 1.5).Slice()
-
-fmt.Println(first)
-fmt.Println(second)
-fmt.Println(third)
-fmt.Println(float)
-```
-
-Output:
-
-```
-first:  [0, 1, 2, 3, 4]
-second: [0, -1, -2, -3, -4]
-third:  [0, 2, 4, 6, 8]
-
-float:  [0.0, 1.5, 3.0, 4.5, 6.0, 7.5, 9.0]
-```
-#### Features 🔥
-- **Note** that compared to `range()` from Python, `Range()` from **Iterium** if it receives the first parameter below zero, the `step` automatically becomes `-1` and starts with `0`. In Python such parameters <ins>will return an empty array</ins>.
-- **Also**, this iterator is more like `numpy.arange()` as it <ins>can handle the float type</ins>.
-
-<h2 id="map">🔵 iterium.Map(iter, func)</h2>
-
-`Map()` is a function that takes two arguments, a function and another iterator, and returns a new iterator that applies the function to each element of the source iterator, producing the resulting values one at a time.
-
-### Calculating the Fibonacci Number with Iterium
-Here is an example code snippet that demonstrates how to use `iterium.Map()` to apply a function to each element from another iterator:
-
-```golang
-numbers := iterium.Range(30)
-fibonacci := iterium.Map(numbers, func(n int) int {
-    f := make([]int, n+1, n+2)
-    if n < 2 {
-        f = f[0:2]
-    }
-
-    f[0] = 0
-    f[1] = 1
-
-    for i := 2; i <= n; i++ {
-        f[i] = f[i-1] + f[i-2]
-    }
-
-    return f[n]
+```go
+names := iterium.Filter(iterium.New("alice", "", "bob"), func(name string) bool {
+	return name != ""
 })
 
-slice, _ := fibonacci.Slice()
-fmt.Println(slice)
+fmt.Println(iterium.Slice(names)) // [alice bob]
 ```
 
-Output:
+### Empty
 
-```
-[
-    0 1 1 2 3 5 8 13 21 34 55 89
-    144 233 377 610 987 1597 2584
-    4181 6765 10946 17711 28657 46368
-    75025 121393 196418 317811 514229
-]
-```
+`Empty` is useful in functions that return `iter.Seq[T]` but sometimes have nothing to yield.
 
-<h2 id="starmap">🔵 iterium.StarMap(iter, func)</h2>
-
-`StarMap()` takes an iterator of slices and a function as input, and returns an iterator that applies the function to each slice in the iterator, unpacking the slices as function arguments.
-
-Here's an example code snippet that demonstrates how to use `iterium.StarMap()`:
-
-```golang
-func pow(a, b float64) float64 {
-    return math.Pow(a, b)
-}
-
-func main() {
-    values := iterium.New([]float64{2, 5}, []float64{3, 2}, []float64{10, 3})
-    starmap := iterium.StarMap(values, pow)
-
-    slice, _ := starmap.Slice()
-    fmt.Println(slice)
+```go
+func activeIDs(enabled bool) iter.Seq[int] {
+	if !enabled {
+		return iterium.Empty[int]()
+	}
+	return iterium.Range(1, 4)
 }
 ```
 
-Output:
+### Range
 
+`Range` is finite and works like Python-style ranges:
+
+```go
+iterium.Slice(iterium.Range(5))        // [0 1 2 3 4]
+iterium.Slice(iterium.Range(2, 8, 2))  // [2 4 6]
+iterium.Slice(iterium.Range(-3))       // [0 -1 -2]
+iterium.Slice(iterium.Range(10, 0, -3)) // [10 7 4 1]
 ```
-[32, 9, 1000]
-```
 
-**Note** that `iterium.StarMap()` is similar to `iterium.Map()`, but is used when the function to be applied expects two arguments, unlike `Map()` where the function only takes in a single argument.
+A real use case is pagination or chunk offsets:
 
-<h2 id="filter">🔵 iterium.Filter(iter, func)</h2>
+```go
+const pageSize = 100
 
-`Filter()` is used to filter out elements from an iterator based on a given condition. It returns a new iterator with only the elements that satisfy the condition.
-
-Here is an example of using the `iterium.Filter()` function to filter out even numbers from a list:
-
-```golang
-func even(x int) bool {
-    return x % 2 == 0
-}
-
-func main() {
-    numbers := iterium.New(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-    filter := iterium.Filter(numbers, even)
-
-    slice, _ := filter.Slice()
-    fmt.Println(slice)
+for offset := range iterium.Range(0, totalRows, pageSize) {
+	rows := loadRows(offset, pageSize)
+	process(rows)
 }
 ```
 
-Output:
+Use `RangeCount(start, stop, step)` when you need to size or validate work before iterating.
 
+### Count
+
+`Count` is infinite. Always combine it with `SliceN`, `SliceUntil`, `TakeWhile`, `FirstTrue`, or a `break`.
+
+```go
+ids := iterium.SliceN(iterium.Count(1000, 5), 4)
+fmt.Println(ids) // [1000 1005 1010 1015]
 ```
-[2, 4, 6, 8, 10]
-```
 
-<h2 id="filter-false">🔵 iterium.FilterFalse(iter, func)</h2>
+Use it for generated indexes:
 
-`FilterFalse()` returns an iterator that contains only the elements from the input iterator for which the given function returns `False`.
-
-Here is an example of using the `iterium.FilterFalse()` function to filter out even numbers from a list:
-
-```golang
-func even(x int) bool {
-    return x % 2 == 0
-}
-
-func main() {
-    numbers := iterium.New(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
-    filter := iterium.FilterFalse(numbers, even)
-
-    slice, _ := filter.Slice()
-    fmt.Println(slice)
+```go
+for attempt := range iterium.Count(1) {
+	if send() == nil || attempt == 3 {
+		break
+	}
 }
 ```
 
-Output:
+### Repeat
 
+`Repeat(value, n)` yields exactly `n` values. A negative `n` repeats forever.
+
+```go
+fmt.Println(iterium.Slice(iterium.Repeat("pending", 3))) // [pending pending pending]
 ```
-[1, 3, 5, 7, 9]
-```
 
-<h2 id="accumulate">🔵 iterium.Accumulate(iter, func)</h2>
+A common pattern is pairing a constant with generated values:
 
-`Accumulate()` generates a sequence of accumulated values from an iterator. The function takes two arguments: the iterator and the function that defines how to combine the iterator elements.
-
-Here's an example:
-
-```golang
-func sum(x, y int) int {
-    return x + y
-}
-
-func main() {
-    numbers := iterium.New(1, 2, 3, 4, 5)
-    filter := iterium.Accumulate(numbers, sum)
-
-    slice, _ := filter.Slice()
-    fmt.Println(slice)
+```go
+for value := range iterium.Map(iterium.Range(3), func(id int) string {
+	return fmt.Sprintf("tenant-a:%d", id)
+}) {
+	fmt.Println(value)
 }
 ```
 
-In this example, `Accumulate()` generates an iterator that outputs the accumulated `sum` of elements from the iterator `numbers`. 
+## Transforms And Search
 
-Output:
+Transforms take a sequence and return another sequence.
 
-```
-[1 3 6 10 15]
-```
+| Function | Use when |
+| --- | --- |
+| `Map(seq, fn)` | Each value should be converted to another value |
+| `Filter(seq, pred)` | Keep values that pass a predicate |
+| `FilterFalse(seq, pred)` | Keep values that fail a predicate |
+| `Accumulate(seq, op)` | Build running totals or rolling state |
+| `TakeWhile(seq, pred)` | Read until the first value that fails a condition |
+| `DropWhile(seq, pred)` | Skip an initial prefix, then keep the rest |
+| `StarMap(seq, fn)` | Apply a binary function to two-item slices |
+| `Cycle(seq)` | Repeat a finite sequence forever |
+| `FirstTrue(seq, pred)` | Find the first matching value |
+| `FirstFalse(seq, pred)` | Find the first non-matching value |
 
-It also works fine with **strings**:
+### Map
 
-```golang
-func merge(first, second string) string {
-    return fmt.Sprintf("%s-%s", first, second)
+Use `Map` for conversions that should stay lazy.
+
+```go
+type User struct {
+	ID   int
+	Name string
 }
 
-func main() {
-    letters := iterium.New("A", "B", "C", "D")
-    filter := iterium.Accumulate(letters, merge)
-
-    slice, _ := filter.Slice()
-    fmt.Println(slice)
-}
+names := iterium.Map(usersSeq, func(user User) string {
+	return user.Name
+})
 ```
 
-Output:
+### Filter And FilterFalse
 
-```
-["A", "A-B", "A-B-C", "A-B-C-D"]
-```
+Use `Filter` when the predicate describes the values you want. Use `FilterFalse` when the predicate describes values to reject.
 
-<h2 id="take-while">🔵 iterium.TakeWhile(iter, func)</h2>
+```go
+adults := iterium.Filter(usersSeq, func(user User) bool {
+	return user.Age >= 18
+})
 
-`TakeWhile()` returns an iterator that generates elements from an iterator while a given predicate function holds `true`. Once the predicate function returns `false` for an element, `TakeWhile()` stops generating elements.
+nonEmpty := iterium.FilterFalse(iterium.New("", "api", "", "worker"), func(value string) bool {
+	return value == ""
+})
 
-The function takes two arguments: an iterator and a predicate function. The predicate function should take one argument and return a boolean value.
-
-Here's an example:
-
-```golang
-func lessThenSix(x int) bool {
-    return x < 6
-}
-
-func main() {
-    numbers := iterium.New(1, 3, 5, 7, 9, 2, 4, 6, 8)
-    filter := iterium.TakeWhile(numbers, lessThenSix)
-
-    slice, _ := filter.Slice()
-    fmt.Println(slice)
-}
+fmt.Println(iterium.Slice(nonEmpty)) // [api worker]
 ```
 
-Output:
+### Accumulate
 
+Use `Accumulate` for running totals, balances, counters, or progressive state.
+
+```go
+dailyRevenue := iterium.New(120, 80, 100, -30)
+
+runningRevenue := iterium.Accumulate(dailyRevenue, func(total, value int) int {
+	return total + value
+})
+
+fmt.Println(iterium.Slice(runningRevenue)) // [120 200 300 270]
 ```
-[1, 3, 5]
-```
 
-In this example, `TakeWhile()` generates an iterator that yields elements from the `numbers` iterator while they are less than 6. Once `TakeWhile()` encounters an element that does not satisfy the predicate (in this case, the number 7), it stops generating elements.
+### TakeWhile
 
-Note that `TakeWhile()` does not apply the predicate function to all elements from the iterator, but only until the first element that fails the condition. In other words, `TakeWhile()` returns an iterator with values satisfying the condition up to a certain point.
+Use `TakeWhile` when the source is ordered and the first failing value means the rest is not needed.
 
-<h2 id="drop-while">🔵 iterium.DropWhile(iter, func)</h2>
+```go
+recent := iterium.TakeWhile(eventsByNewestFirst, func(event Event) bool {
+	return event.CreatedAt.After(cutoff)
+})
 
-`DropWhile` returns an iterator that generates elements from an iterator after a given predicate function no longer holds `true`. Once the predicate function returns `false` for an element, `DropWhile` starts generating all the remaining elements.
-
-The function takes two arguments: an iterator and predicate function. The predicate function should take one argument and return a boolean value.
-
-Here's an example:
-
-```golang
-func lessThenSix(x int) bool {
-    return x < 6
-}
-
-func main() {
-    numbers := iterium.New(1, 3, 5, 7, 9, 2, 4, 6, 8)
-    filter := iterium.DropWhile(numbers, lessThenSix)
-
-    slice, _ := filter.Slice()
-    fmt.Println(slice)
+for event := range recent {
+	index(event)
 }
 ```
 
-Output:
+This is ideal for logs, sorted timestamps, increasing counters, or any source where early stop saves work.
 
+### DropWhile
+
+Use `DropWhile` to skip a header, warm-up period, or initial invalid prefix.
+
+```go
+measurements := iterium.DropWhile(sensorReadings, func(reading Reading) bool {
+	return reading.Status == "warming-up"
+})
 ```
-[7, 9, 2, 4, 6, 8]
-```
 
-In this example, `DropWhile()` generates an iterator that yields elements from the `numbers` iterator after the first element that is greater than or equal to 6.
+After the predicate first returns false, all remaining values are yielded without checking the prefix again.
 
-**Note** that `DropWhile()` applies the predicate function to all elements from the iterator **until it finds the first element that fails the condition**. Once that happens, it starts generating all the remaining elements from the iterator, regardless of whether they satisfy the predicate function.
+### FirstTrue And FirstFalse
 
-`DropWhile()` is often used to skip over elements in an iterator that do not satisfy a certain condition, and start processing or generating elements once the condition is met.
+Use these when you only need one value and want the upstream pipeline to stop immediately.
 
-<h1 id="custom">Create your own iterator 🛠️</h1>
-
-You can create your own iterators for your unique tasks. Below is an example of how to do this:
-
-```golang
-// CustomStuttering is a custom iterator that repeats
-// elements from the iterator 3 times.
-func CustomStuttering[T any](iterable iterium.Iter[T]) iterium.Iter[T] {
-    total := iterable.Count() * 3
-    iter := iterium.Instance[T](total, false)
-
-    go func() {
-        defer iter.Close()
-        defer iterium.IterRecover()
-
-        for {
-            // Here will be the logic of your iterator...
-            next, err := iterable.Next()
-            if err != nil {
-                return
-            }
-
-            // Send each value from the iterator
-            // three times to a new channel.
-            iter.Chan() <- next
-            iter.Chan() <- next
-            iter.Chan() <- next
-        }
-    }()
-
-    return iter
-}
-
-func main() {
-    numbers := iterium.New(1, 2, 3)
-    custom := CustomStuttering(numbers)
-
-    slice, _ := custom.Slice()
-    fmt.Println(slice)
-    fmt.Println("Total:", custom.Count())
+```go
+user, ok := iterium.FirstTrue(usersSeq, func(user User) bool {
+	return user.Email == targetEmail
+})
+if !ok {
+	return errors.New("user not found")
 }
 ```
 
-Output:
+### StarMap
 
+`StarMap` expects each yielded slice to contain at least two values and applies a binary function to `value[0]` and `value[1]`.
+
+```go
+sums := iterium.StarMap(iterium.Product([]int{1, 2, 3}, 2), func(a, b int) int {
+	return a + b
+})
+
+fmt.Println(iterium.Slice(sums)) // [2 3 4 3 4 5 4 5 6]
 ```
-[1 1 1 2 2 2 3 3 3]
-Total: 9
+
+### Cycle
+
+`Cycle` caches the first pass through a finite sequence, then replays the saved values forever.
+
+```go
+rotatingWorkers := iterium.Cycle(iterium.New("worker-a", "worker-b", "worker-c"))
+
+for worker := range iterium.SliceN(rotatingWorkers, 5) {
+	fmt.Println(worker)
+}
 ```
+
+Use it for round-robin assignment, repeating schedules, or test fixtures. Do not pass an infinite sequence to `Cycle`; it will keep caching forever.
+
+## Combinatorics
+
+This is where users often choose the wrong method. The main question is whether order matters and whether a value may be reused.
+
+| Function | Order matters | Reuse allowed | Example output for `["A", "B"]`, `r=2` | Use case |
+| --- | --- | --- | --- | --- |
+| `Product(values, r)` | Yes | Yes | `AA AB BA BB` | All codes, all test-matrix choices, search spaces |
+| `Combinations(values, r)` | No | No | `AB` | Pick unique teams, feature subsets, lottery-style selections |
+| `CombinationsWithReplacement(values, r)` | No | Yes | `AA AB BB` | Multisets, repeated quantities, bundles |
+| `Permutations(values, r)` | Yes | No | `AB BA` | Ordered plans, route/order testing, rank lists |
+
+Stack Overflow questions about itertools often come down to this distinction: if you need "permutations with replacement", you usually want Cartesian product with `repeat`, not combinations.
+
+### Product
+
+`Product(symbols, repeat)` yields Cartesian products of one alphabet repeated `repeat` times.
+
+```go
+for code := range iterium.Product([]string{"A", "B", "C"}, 2) {
+	fmt.Println(strings.Join(code, ""))
+}
+// AA AB AC BA BB BC CA CB CC
+```
+
+Real use cases:
+
+- Generate all short coupon/code candidates from an alphabet.
+- Run every combination in a test matrix.
+- Explore all choices in a bounded search space.
+- Build pairs/triples from a single homogeneous set.
+
+For large products, use `ProductCount` or `ProductCountOK` before iterating:
+
+```go
+count, ok := iterium.ProductCountOK(len(iterium.AsciiLowercase), 6)
+if !ok || count > 10_000_000 {
+	return errors.New("search space is too large")
+}
+```
+
+### Product2
+
+Use `Product2` when you have two different element types and want Go to keep both types.
+
+```go
+for region, tier := range iterium.Product2(
+	[]string{"us-east", "eu-west"},
+	[]int{1, 2, 3},
+) {
+	fmt.Printf("%s tier %d\n", region, tier)
+}
+```
+
+`Product2` returns `iter.Seq2[A, B]`, so consume it with `for first, second := range ...`.
+
+### Combinations
+
+`Combinations(symbols, r)` yields unique selections where order does not matter.
+
+```go
+members := []string{"Ana", "Ben", "Cy", "Dee"}
+
+for team := range iterium.Combinations(members, 2) {
+	fmt.Println(team)
+}
+```
+
+Real use cases:
+
+- Select review pairs from a team.
+- Generate unique feature subsets.
+- Choose sample groups where `AB` and `BA` mean the same thing.
+
+### CombinationsWithReplacement
+
+Use `CombinationsWithReplacement` when values may repeat, but order still does not matter.
+
+```go
+flavors := []string{"vanilla", "chocolate", "mint"}
+
+for scoops := range iterium.CombinationsWithReplacement(flavors, 2) {
+	fmt.Println(scoops)
+}
+```
+
+Real use cases:
+
+- Choose product bundles where duplicate items are allowed.
+- Model quantities without caring about order.
+- Generate multiset fixtures for tests.
+
+### Permutations
+
+`Permutations(symbols, r)` yields ordered arrangements without reusing a value.
+
+```go
+steps := []string{"build", "test", "deploy"}
+
+for order := range iterium.Permutations(steps, 3) {
+	fmt.Println(order)
+}
+```
+
+Real use cases:
+
+- Try possible task orders.
+- Test rank lists.
+- Generate route/order candidates where `AB` and `BA` are different.
+
+## Count Helpers
+
+Count helpers let you estimate work before doing it.
+
+```go
+iterium.ProductCount(26, 4)
+iterium.CombinationsCount(26, 5)
+iterium.CombinationsWithReplacementCount(26, 5)
+iterium.PermutationCount(10, 5)
+```
+
+The non-OK variants saturate at `math.MaxInt64` on overflow. The `*CountOK` variants return `(count, ok)`:
+
+```go
+count, ok := iterium.CombinationsCountOK(60, 30)
+if !ok {
+	return errors.New("too many combinations")
+}
+fmt.Println(count)
+```
+
+## Safe Slices vs Reused Buffers
+
+The normal combinatoric sequence APIs yield slices that are safe to keep:
+
+```go
+var saved [][]string
+for value := range iterium.Product([]string{"A", "B"}, 2) {
+	saved = append(saved, value)
+}
+```
+
+That safety may allocate one slice per yielded value. For hot paths, use the `Into` APIs. They reuse one result buffer and are much faster, but the value is only valid until the next callback call.
+
+```go
+var saved [][]string
+
+iterium.ProductInto([]string{"A", "B"}, 2, func(value []string) bool {
+	saved = append(saved, append([]string(nil), value...))
+	return true
+})
+```
+
+If you only inspect each value inside the callback, do not copy:
+
+```go
+iterium.ProductBytesInto(iterium.AsciiLowercaseBytes, 4, func(value []byte) bool {
+	if bytes.Equal(value, []byte("test")) {
+		fmt.Println("found")
+		return false
+	}
+	return true
+})
+```
+
+Available reused-buffer APIs:
+
+```go
+iterium.ProductInto(symbols, repeat, yield)
+iterium.ProductBytesInto(symbols, repeat, yield)
+iterium.ProductStringInto(symbols, repeat, yield)
+iterium.ProductRunesInto(symbols, repeat, yield)
+iterium.CombinationsInto(symbols, r, yield)
+iterium.CombinationsWithReplacementInto(symbols, r, yield)
+iterium.PermutationsInto(symbols, r, yield)
+```
+
+## Alphabet Constants
+
+String alphabets are convenient with the safe APIs:
+
+```go
+iterium.AsciiLowercase
+iterium.AsciiUppercase
+iterium.AsciiLetters
+iterium.Digits
+iterium.HexDigits
+iterium.OctDigits
+iterium.Punctuation
+iterium.Whitespace
+iterium.Printable
+```
+
+Byte and rune alphabets are better for allocation-sensitive code:
+
+```go
+iterium.AsciiLowercaseBytes
+iterium.AsciiUppercaseBytes
+iterium.AsciiLettersBytes
+iterium.DigitsBytes
+iterium.HexDigitsBytes
+iterium.OctDigitsBytes
+
+iterium.AsciiLowercaseRunes
+iterium.AsciiUppercaseRunes
+iterium.AsciiLettersRunes
+iterium.DigitsRunes
+iterium.HexDigitsRunes
+iterium.OctDigitsRunes
+```
+
+## Adapters
+
+Adapters collect or bridge sequences at application boundaries.
+
+| Function | Use when |
+| --- | --- |
+| `Slice(seq)` | The sequence is finite and you need a `[]T` |
+| `SliceN(seq, n)` | The sequence may be infinite or you only need the first `n` values |
+| `SliceUntil(seq, stop)` | Collect until a stop condition is reached |
+| `Slice2(seq2)` | Collect `iter.Seq2[A, B]` into `[]Pair[A, B]` |
+| `Chan(ctx, seq)` | A channel API is required at a boundary |
+| `Chan2(ctx, seq2)` | A channel of `Pair[A, B]` is required |
+
+### Slice, SliceN, SliceUntil
+
+```go
+all := iterium.Slice(iterium.Range(5))
+some := iterium.SliceN(iterium.Count[int](), 5)
+until := iterium.SliceUntil(iterium.Count[int](), func(value int) bool {
+	return value == 5
+})
+
+fmt.Println(all)   // [0 1 2 3 4]
+fmt.Println(some)  // [0 1 2 3 4]
+fmt.Println(until) // [0 1 2 3 4]
+```
+
+Do not call `Slice` on `Count`, `Repeat(value, -1)`, or `Cycle` unless another transform makes the sequence finite.
+
+### Slice2
+
+```go
+pairs := iterium.Slice2(iterium.Product2(
+	[]int{1, 2},
+	[]string{"small", "large"},
+))
+
+fmt.Println(pairs)
+```
+
+### Chan And Chan2
+
+Use channels only when the rest of your program already speaks channels. For normal pipelines, range over the sequence directly.
+
+`Chan` requires a context so the producer can stop if the consumer exits early.
+
+```go
+ctx, cancel := context.WithCancel(context.Background())
+defer cancel()
+
+for value := range iterium.Chan(ctx, iterium.Range(5)) {
+	if value == 3 {
+		break
+	}
+	fmt.Println(value)
+}
+```
+
+## Pull-Style Iteration
+
+When a `for range` loop is not the right shape, use the standard library `iter.Pull`.
+
+```go
+next, stop := iter.Pull(iterium.Range(5))
+defer stop()
+
+for {
+	value, ok := next()
+	if !ok {
+		break
+	}
+	fmt.Println(value)
+}
+```
+
+This is useful when you need to manually coordinate multiple sequences.
+
+## Real Use Cases
+
+### Test Matrix Generation
+
+```go
+browsers := []string{"chrome", "firefox"}
+locales := []string{"en", "fr", "es"}
+
+for browser, locale := range iterium.Product2(browsers, locales) {
+	t.Run(browser+"-"+locale, func(t *testing.T) {
+		runUITest(t, browser, locale)
+	})
+}
+```
+
+Use `Product2` for two different dimensions. Use `Product` when every position comes from the same alphabet or symbol list.
+
+### Early-Stop Search
+
+```go
+code, ok := iterium.FirstTrue(
+	iterium.Product(iterium.Digits, 4),
+	func(parts []string) bool {
+		return strings.Join(parts, "") == "0427"
+	},
+)
+if ok {
+	fmt.Println("found", strings.Join(code, ""))
+}
+```
+
+Only candidates up to the matching value are generated. For a hot path, prefer `ProductBytesInto` or `ProductStringInto`.
+
+### Running Business Totals
+
+```go
+balances := iterium.Accumulate(transactions, func(balance, tx int64) int64 {
+	return balance + tx
+})
+
+for balance := range balances {
+	if balance < 0 {
+		alert(balance)
+		break
+	}
+}
+```
+
+### Round-Robin Assignment
+
+```go
+workers := iterium.Cycle(iterium.New("a", "b", "c"))
+tasks := []Task{task1, task2, task3, task4}
+
+nextWorker, stop := iter.Pull(workers)
+defer stop()
+
+for _, task := range tasks {
+	worker, _ := nextWorker()
+	assign(task, worker)
+}
+```
+
+## Practical Rules
+
+- Use `for range` as the default consumer.
+- Use `Slice`, `SliceN`, and `SliceUntil` only at boundaries.
+- Use `FirstTrue`, `FirstFalse`, `TakeWhile`, or `break` to stop expensive pipelines early.
+- Use `Product` for order-sensitive choices with replacement.
+- Use `Combinations` when order does not matter and values cannot repeat.
+- Use `CombinationsWithReplacement` when order does not matter and values can repeat.
+- Use `Permutations` when order matters and values cannot repeat.
+- Use `Into` APIs for performance-sensitive combinatorics.
+- Copy values from `Into` callbacks only when you need to keep them.
+- Do not pass infinite sequences to `Slice` or `Cycle`.
+
+## References
+
+- Go `iter` package documentation: https://pkg.go.dev/iter
+- Go blog, "Range Over Function Types": https://go.dev/blog/range-functions
+- Python `itertools` documentation: https://docs.python.org/3/library/itertools.html
+- Stack Overflow example on choosing `product` when order matters and replacement is needed: https://stackoverflow.com/questions/68665316/python-use-of-itertools-to-find-all-combinations-permutations-with-replacemen
+- Stack Overflow example showing why large Cartesian products should be streamed instead of materialized: https://stackoverflow.com/questions/72471146/memory-problem-when-using-itertools-and-product-python-brute-force-script

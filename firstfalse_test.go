@@ -1,32 +1,24 @@
 package iterium
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestFirstFalse(t *testing.T) {
-	numbers := Range(10, 0, -1)
-
-	firstFalse := FirstFalse(numbers, func(x int) bool {
-		return x >= 2
+	value, ok := FirstFalse(Range(10, 0, -1), func(value int) bool {
+		return value >= 2
 	})
 
-	if value, err := firstFalse.Next(); assert.Nil(t, err) {
-		assert.Exactly(t, 1, value)
-	}
-
-	if _, err := firstFalse.Next(); assert.NotNil(t, err) {
-		assert.ErrorIs(t, stopIterationErr, err)
-	}
+	assert.True(t, ok)
+	assert.Exactly(t, 1, value)
 }
 
 func TestFirstFalseEmpty(t *testing.T) {
-	firstFalse := FirstFalse(Range(10), func(x int) bool {
-		return x < 100
+	_, ok := FirstFalse(Range(10), func(value int) bool {
+		return value < 100
 	})
 
-	if slice, err := firstFalse.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{}, slice)
-	}
+	assert.False(t, ok)
 }

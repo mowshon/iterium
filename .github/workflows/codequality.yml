@@ -1,41 +1,53 @@
-name: Tests Coverage
+name: Code Quality
 
 on:
   push:
     branches:
       - main
   pull_request:
-    types:
-      - opened
-      - synchronize
-      - reopened
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
     steps:
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: '1.20'
-
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v6
 
-      - name: Cache Go Modules
-        uses: actions/cache@v2
+      - name: Set up Go
+        uses: actions/setup-go@v6
         with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
+          go-version: '1.23.4'
 
-      - name: Generate Coverage Report
+      - name: Run tests
         run: go test ./... -coverprofile=coverage.out
 
       - name: SonarCloud Scan
         uses: SonarSource/sonarcloud-github-action@master
+        if: env.SONAR_TOKEN != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.23.4'
+
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12.2

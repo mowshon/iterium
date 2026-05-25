@@ -1,39 +1,22 @@
 package iterium
 
-// DropWhile returns all other values from the provided iterator
-// after receiving the first `false` from the provided function.
-//
-// e.g. DropWhile(New(1, 4, 6, 4, 1), x < 5) => [6, 4, 1]
-func DropWhile[T any](iterable Iter[T], pred func(T) bool) Iter[T] {
-	iter := Instance[T](0, false)
+import "iter"
 
-	go func() {
-		defer IterRecover()
-		defer iter.Close()
-
-		// Wait until the value from the channel returns false.
-		for {
-			if value, ok := <-iterable.Chan(); ok {
-				if !pred(value) {
-					// This value is also written
-					// to the new iterator.
-					iter.Chan() <- value
-					break
+// DropWhile skips values until predicate returns false, then yields the rest.
+func DropWhile[T any](seq iter.Seq[T], predicate func(T) bool) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		dropping := true
+		for value := range seq {
+			if dropping {
+				if predicate(value) {
+					continue
 				}
+				dropping = false
 			}
-		}
 
-		// Once false has been received, write all
-		// the following values to the channel.
-		for true {
-			next, err := iterable.Next()
-			if err != nil {
+			if !yield(value) {
 				return
 			}
-
-			iter.Chan() <- next
 		}
-	}()
-
-	return iter
+	}
 }

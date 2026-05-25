@@ -1,30 +1,23 @@
 package iterium
 
-// Repeat returns a channel from which a value can be retrieved n-number of times.
-func Repeat[T any](value T, n int) Iter[T] {
-	// Initialisation of a new channel.
-	iter := Instance[T](int64(n), false)
+import "iter"
 
-	// If the length is below zero, then
-	// the iterator will run forever.
-	if n < 0 {
-		iter.SetInfinite(true)
-	}
-
-	go func() {
-		defer IterRecover()
-		defer iter.Close()
-
-		if iter.IsInfinite() {
+// Repeat returns a Go iterator sequence that repeats value n times.
+// A negative n repeats forever.
+func Repeat[T any](value T, n int) iter.Seq[T] {
+	return func(yield func(T) bool) {
+		if n < 0 {
 			for {
-				iter.Chan() <- value
+				if !yield(value) {
+					return
+				}
+			}
+		} else {
+			for i := 0; i < n; i++ {
+				if !yield(value) {
+					return
+				}
 			}
 		}
-
-		for step := 0; step < n; step++ {
-			iter.Chan() <- value
-		}
-	}()
-
-	return iter
+	}
 }

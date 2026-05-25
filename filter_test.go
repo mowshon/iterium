@@ -1,27 +1,25 @@
 package iterium
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func even(x int) bool {
-	return x%2 == 0
+func even(value int) bool {
+	return value%2 == 0
 }
 
 func TestFilter(t *testing.T) {
-	filter := Filter(New(1, 2, 3, 4, 5, 6, 7, 8, 9, 10), even)
-	if slice, err := filter.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{2, 4, 6, 8, 10}, slice)
-	}
+	values := Filter(New(1, 2, 3, 4, 5, 6, 7, 8, 9, 10), even)
+
+	assert.Exactly(t, []int{2, 4, 6, 8, 10}, Slice(values))
 }
 
 func TestFilterEmpty(t *testing.T) {
-	filter := Filter(New(1, 2, 3), func(x int) bool {
-		return x > 100
+	values := Filter(New(1, 2, 3), func(value int) bool {
+		return value > 100
 	})
 
-	if slice, err := filter.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{}, slice)
-	}
+	assert.Exactly(t, []int{}, Slice(values))
 }

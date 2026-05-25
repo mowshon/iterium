@@ -1,22 +1,18 @@
 package iterium
 
-// Count returns an iterator in which each successive value
-// will be added to the value from step.
-func Count[N Number](args ...N) Iter[N] {
+import "iter"
+
+// Count returns an infinite Go iterator sequence.
+func Count[N Number](args ...N) iter.Seq[N] {
 	start, step, _ := argsTrio[N](args, 0, 1, 0)
 
-	// Initialisation of a new channel.
-	iter := Instance[N](0, true)
-
-	go func() {
-		defer IterRecover()
-		defer iter.Close()
-
+	return func(yield func(N) bool) {
+		next := start
 		for {
-			iter.Chan() <- start
-			start = start + step
+			if !yield(next) {
+				return
+			}
+			next += step
 		}
-	}()
-
-	return iter
+	}
 }

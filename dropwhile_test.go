@@ -1,16 +1,23 @@
 package iterium
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestDropWhile(t *testing.T) {
-	dropwhile := DropWhile(New(1, 4, 6, 4, 1), func(x int) bool {
-		return x < 5
+	values := DropWhile(New(1, 4, 6, 4, 1), func(value int) bool {
+		return value < 5
 	})
 
-	if slice, err := dropwhile.Slice(); assert.Nil(t, err) {
-		assert.Exactly(t, []int{6, 4, 1}, slice)
-	}
+	assert.Exactly(t, []int{6, 4, 1}, Slice(values))
+}
+
+func TestDropWhileEmptyWhenPredicateNeverFalse(t *testing.T) {
+	values := DropWhile(New(1, 2, 3), func(value int) bool {
+		return value < 5
+	})
+
+	assert.Exactly(t, []int{}, Slice(values))
 }
