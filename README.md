@@ -1,8 +1,10 @@
 # Iterium
 
-Iterium is a Go iterator toolkit inspired by Python's `itertools`, built on Go's official `iter` package.
+Iterium is Python `itertools` for Go: a lazy iterator toolkit for Golang built on Go's official `iter` package.
 
-It is useful when you want to build lazy, synchronous pipelines without creating channels, goroutines, or intermediate slices for every step. Iterium works best for finite data transformations, bounded search spaces, test-case generation, combinatorics, and small adapter boundaries where a slice or channel is needed at the edge.
+If you are looking for `itertools` in Go, Iterium provides familiar tools such as `Range`, `Count`, `Repeat`, `Map`, `Filter`, `TakeWhile`, `DropWhile`, `Product`, `Combinations`, `CombinationsWithReplacement`, and `Permutations`. It helps Python developers bring `itertools`-style lazy pipelines, Cartesian products, combinations, and permutations into idiomatic Go `for range` loops.
+
+Use Iterium when you want lazy, synchronous pipelines without creating channels, goroutines, or intermediate slices for every step. It works best for finite data transformations, bounded search spaces, test-case generation, combinatorics, and small adapter boundaries where a slice or channel is needed at the edge.
 
 ## Benchmark: Iterium vs Python 3.14 `itertools`
 

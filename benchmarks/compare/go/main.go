@@ -1,7 +1,7 @@
 package main
 
 import (
-	"crypto/md5"
+	"crypto/md5" //nolint:gosec // Intentional benchmark parity with Python hashlib.md5; not used for security.
 	"fmt"
 	"os"
 
@@ -53,10 +53,10 @@ func main() {
 		mustEqual(count, expectedProduct)
 		fmt.Println(count)
 	case "md5-repeat5":
-		target := md5.Sum([]byte(md5Password))
+		target := md5.Sum([]byte(md5Password)) //nolint:gosec // Intentional weak hash workload for benchmark comparison.
 		var found []byte
 		iterium.ProductBytesInto(iterium.AsciiLowercaseBytes, productRepeat, func(candidate []byte) bool {
-			hash := md5.Sum(candidate)
+			hash := md5.Sum(candidate) //nolint:gosec // Intentional weak hash workload for benchmark comparison.
 			if hash == target {
 				found = append(found[:0], candidate...)
 				return false
