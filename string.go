@@ -97,5 +97,5 @@ var Whitespace = []string{
 
 // Printable is a slice of ASCII characters which are considered printable.
 var Printable = concatMultipleSlices(
-	AsciiLetters, Digits, Punctuation, Whitespace,
+	Digits, AsciiLetters, Punctuation, Whitespace,
 )
