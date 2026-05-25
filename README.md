@@ -4,6 +4,35 @@ Iterium is a Go iterator toolkit inspired by Python's `itertools`, built on Go's
 
 It is useful when you want to build lazy, synchronous pipelines without creating channels, goroutines, or intermediate slices for every step. Iterium works best for finite data transformations, bounded search spaces, test-case generation, combinatorics, and small adapter boundaries where a slice or channel is needed at the edge.
 
+## Benchmark: Iterium vs Python 3.14 `itertools`
+
+These benchmarks compare Iterium best-practice streaming code against Python 3.14 `itertools` equivalents. The Go side uses `Into` APIs where the generated value is only inspected and not retained; this avoids per-item result allocation and is the recommended style for hot combinatoric loops.
+
+Local run: Linux x86_64, Go 1.26.2, Python 3.14.5. Times and peak RSS are best of 3 runs, measured with `/usr/bin/time` after building the Go benchmark binary. RSS is process-level memory, so it includes the Go runtime or Python interpreter baseline. The percent columns are relative reductions versus Python: `(python - iterium) / python`.
+
+| Workload | Results streamed | Iterium API | Python API | Iterium time | Python time | Speedup | Time reduction | Iterium RSS | Python RSS | RSS reduction |
+| --- | ---: | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| Range -> map -> filter | 10,000,000 range values | `Range` + `Map` + `Filter` | `range` + `map` + generator filter | 0.06 s | 0.94 s | 15.7x | 93.6% | 2.3 MiB | 13.1 MiB | 82.9% |
+| Cartesian product count | 26^5 = 11,881,376 products | `ProductBytesInto` | `itertools.product` | 0.03 s | 0.42 s | 14.0x | 92.9% | 2.3 MiB | 13.1 MiB | 82.9% |
+| MD5 brute force, worst-case `zzzzz` | 26^5 = 11,881,376 MD5 checks | `ProductBytesInto` + `crypto/md5` | `itertools.product` + `hashlib.md5` | 1.26 s | 7.53 s | 6.0x | 83.3% | 2.3 MiB | 13.1 MiB | 82.9% |
+| Combinations count | C(35, 8) = 23,535,820 combinations | `CombinationsInto` | `itertools.combinations` | 0.08 s | 1.01 s | 12.6x | 92.1% | 2.1 MiB | 13.0 MiB | 83.7% |
+| Combinations with replacement count | C(37, 8) = 38,608,020 combinations | `CombinationsWithReplacementInto` | `itertools.combinations_with_replacement` | 0.12 s | 1.60 s | 13.3x | 92.5% | 2.3 MiB | 13.1 MiB | 82.9% |
+| Permutations count | P(12, 8) = 19,958,400 permutations | `PermutationsInto` | `itertools.permutations` | 0.09 s | 0.85 s | 9.4x | 89.4% | 2.3 MiB | 13.0 MiB | 82.7% |
+
+Conclusion: on these streaming workloads, Iterium is roughly 6x to 16x faster than Python 3.14 `itertools` and uses about 83% less peak resident memory as a command-line process. The MD5 crack benchmark is the most realistic mixed workload here because it combines iterator overhead, candidate construction, early stopping, and hashing; Iterium completes the same worst-case 5-letter lowercase search in 1.26 s versus 7.53 s for Python.
+
+For best results in Go, use the regular safe APIs such as `Product`, `Combinations`, and `Permutations` when you need to keep yielded slices. Use the `Into` APIs when you only inspect each value during iteration. In Python, the closest best practice is also to stream with `itertools` and avoid materializing large products or combinations.
+
+Reproduce the comparison:
+
+```bash
+go build -o /tmp/iterium-compare ./benchmarks/compare/go
+for case in range-map-filter product-repeat5 md5-repeat5 combinations combinations-with-replacement permutations; do
+  /usr/bin/time -f "iterium $case: %e seconds, %M KB RSS" /tmp/iterium-compare "$case"
+  /usr/bin/time -f "python  $case: %e seconds, %M KB RSS" /usr/bin/python3.14 benchmarks/compare/python_itertools.py "$case"
+done
+```
+
 Iterium uses `iter.Seq` and `iter.Seq2` as the public API. That means most values are consumed with normal Go `for range` loops:
 
 ```go
