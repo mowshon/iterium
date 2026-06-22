@@ -46,11 +46,11 @@ for value := range iterium.Range(0, 10, 2) {
 ## Installation
 
 ```bash
-go get github.com/mowshon/iterium
+go get github.com/mowshon/iterium/v2@latest
 ```
 
 ```go
-import "github.com/mowshon/iterium"
+import "github.com/mowshon/iterium/v2"
 ```
 
 Iterium requires Go 1.23.4 or newer.

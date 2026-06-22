@@ -1,4 +1,4 @@
-module github.com/mowshon/iterium
+module github.com/mowshon/iterium/v2
 
 go 1.23.4
 

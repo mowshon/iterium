@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/mowshon/iterium"
+	"github.com/mowshon/iterium/v2"
 )
 
 const (
