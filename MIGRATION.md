@@ -5,7 +5,7 @@ Iterium v2 replaces the old channel-backed `Iter[T]` API with Go's official `ite
 ## Module Path
 
 ```go
-import "github.com/mowshon/iterium"
+import "github.com/mowshon/iterium/v2"
 ```
 
 ## Iteration

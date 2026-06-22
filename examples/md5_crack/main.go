@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	iterium "github.com/mowshon/iterium"
+	iterium "github.com/mowshon/iterium/v2"
 )
 
 func main() {
